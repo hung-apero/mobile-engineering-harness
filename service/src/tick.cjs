@@ -16,6 +16,7 @@ const { logChanged, logRepeated } = require('./service-log.cjs');
 const { redact, firstLine } = require('./redact.cjs');
 const { bugStep } = require('./bugs/step.cjs');
 const { specStep } = require('./specs/step.cjs');
+const { boardStep } = require('./board/sync.cjs');
 
 const SLEEP_GAP_MS = 2 * 60 * 1000;
 const COMMAND_HOLDERS = ['X01', 'X08'];
@@ -122,6 +123,7 @@ async function tick(ctx, now) {
   if (supervised && config.base) await step(ctx, 'claim', () => claimStep(ctx, config, now));
   if (supervised && config.base) bugStep(ctx, config, now);
   if (supervised && config.base) specStep(ctx, config, now);
+  if (supervised && config.base) boardStep(ctx, config, now);
   if (config.projectsOk && ctx.desk) ctx.deskStepPending = Promise.resolve(ctx.desk.step(config.projects.values(), now)).catch(error => ctx.log('desk-error', { error: firstLine(error) }));
   await step(ctx, 'waits', () => {
     closeInactiveBlocks(ctx.db, config.isInactive, now);

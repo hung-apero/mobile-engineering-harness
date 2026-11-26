@@ -23,7 +23,7 @@ async function within(promise, ms) {
 }
 
 async function settleSteps(ctx, waitMs) {
-  await within(Promise.all([ctx.bugStepPending, ctx.specStepPending, ctx.deskStepPending].map(pending => Promise.resolve(pending).catch(() => {}))), waitMs);
+  await within(Promise.all([ctx.bugStepPending, ctx.specStepPending, ctx.boardStepPending, ctx.deskStepPending].map(pending => Promise.resolve(pending).catch(() => {}))), waitMs);
   await within(Promise.allSettled([ctx.bugs?.closeAll(), ctx.specs?.closeAll()]), CLOSE_WAIT_MS);
 }
 

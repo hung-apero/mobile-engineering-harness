@@ -14,6 +14,14 @@ function stamp(ms) {
   return new Date(ms + 7 * HOUR).toISOString().slice(0, 16).replace('T', ' ');
 }
 
+function scopeOf(fixVersions, baselineAt) {
+  if (!Array.isArray(fixVersions) || !fixVersions.every(name => typeof name === 'string' && store.VERSION_RE.test(name))) throw new Error('fixVersions phải là danh sách tên version hợp lệ');
+  const since = stamp(baselineAt);
+  const list = fixVersions.map(name => `"${name}"`).join(', ');
+  const own = fixVersions.length ? `(fixVersion is EMPTY OR fixVersion in (${list}))` : 'fixVersion is EMPTY';
+  return { since, own, reasons: [`(created >= "${since}" AND ${own})`, ...(fixVersions.length ? [`fixVersion in (${list})`] : [])] };
+}
+
 function jql(project, version, now, options = {}) {
   if (typeof project !== 'string' || !PROJECT_RE.test(project)) throw new Error(`mã project không hợp lệ: ${project}`);
   store.checkVersion(version);
@@ -24,12 +32,7 @@ function jql(project, version, now, options = {}) {
   if (keys !== undefined && (!Array.isArray(keys) || keys.length === 0 || !keys.every(k => typeof k === 'string' && store.KEY_RE.test(k)))) {
     throw new Error('keys phải là danh sách mã ticket hợp lệ');
   }
-  if (!Array.isArray(fixVersions) || !fixVersions.every(name => typeof name === 'string' && store.VERSION_RE.test(name))) throw new Error('fixVersions phải là danh sách tên version hợp lệ');
-  const since = stamp(baselineAt);
-  const list = fixVersions.map(name => `"${name}"`).join(', ');
-  const own = fixVersions.length ? `(fixVersion is EMPTY OR fixVersion in (${list}))` : 'fixVersion is EMPTY';
-  const reasons = [`(created >= "${since}" AND ${own})`];
-  if (fixVersions.length) reasons.push(`fixVersion in (${list})`);
+  const { since, own, reasons } = scopeOf(fixVersions, baselineAt);
   reasons.push('labels = "claude-fix"', `status changed to Reopened after "${since}" AND ${own}`);
   const lines = [
     `project = ${project} AND issuetype = Bug AND status in (${waiting.map(s => `"${s}"`).join(', ')})`,
@@ -86,4 +89,4 @@ function recordPoll(db, project, version, { newCount, now }) {
   });
 }
 
-module.exports = { jql, pollInterval, setPolling, operatorOff, offKey, recordBuildSent, recordPoll, FAST, SLOW };
+module.exports = { jql, scopeOf, PROJECT_RE, pollInterval, setPolling, operatorOff, offKey, recordBuildSent, recordPoll, FAST, SLOW };

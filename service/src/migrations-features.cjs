@@ -107,6 +107,16 @@ const FEATURES = [
   CREATE UNIQUE INDEX jobs_one_open ON jobs (project, kind, key)
     WHERE state IN ('queued', 'starting', 'running', 'parked');
   CREATE INDEX jobs_state ON jobs (state, priority, id);`,
+  `CREATE TABLE board_bugs (
+    project TEXT NOT NULL, version TEXT NOT NULL, key TEXT NOT NULL, summary TEXT NOT NULL, status TEXT NOT NULL,
+    priority TEXT, assignee TEXT, updated_at TEXT, synced_at INTEGER NOT NULL,
+    PRIMARY KEY (project, key)
+  );
+  CREATE INDEX board_bugs_version ON board_bugs (project, version);
+  CREATE TABLE viewer_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, hash TEXT NOT NULL UNIQUE, keys TEXT NOT NULL DEFAULT '[]',
+    expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER
+  );`,
 ];
 
 module.exports = { FEATURES };

@@ -73,6 +73,7 @@ function createContext(env = process.env) {
     stopping: false,
     bugStepPending: null,
     specStepPending: null,
+    boardStepPending: null,
     deskStepPending: null,
   };
   ctx.bugs = createBugs(ctx);

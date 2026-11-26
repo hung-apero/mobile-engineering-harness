@@ -111,7 +111,7 @@ test('migrating a database from before the spec tables keeps its jobs', () => {
   const f = file();
   const db = openDb(f);
   const id = jobs.enqueue(db, { project: 'AAP1', kind: 'feature', key: 'F-1', priority: 2, slots: 1 }, NOW).id;
-  db.exec('DROP TABLE inbox; DROP TABLE inbox_posts;');
+  db.exec('DROP TABLE board_bugs; DROP TABLE viewer_tokens; DROP TABLE inbox; DROP TABLE inbox_posts;');
   db.exec('DROP TABLE spec_tokens; DROP TABLE spec_chat; DROP TABLE spec_rounds; DROP TABLE spec_answers; DROP TABLE specs;');
   db.exec(`PRAGMA user_version = ${MIGRATIONS.findIndex(sql => sql.includes('CREATE TABLE specs'))}`);
   db.exec(`CREATE TABLE jobs_old AS SELECT * FROM jobs`);
