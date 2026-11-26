@@ -113,6 +113,7 @@ Mỗi project một file `~/.dev-zone/projects/<KEY>.yaml`. Mẫu: `projects/exa
 | `dz newapp start\|status\|check\|create <KEY> [cờ…]` | danh sách và kiểm điều kiện app mới, rồi sinh file project (`enabled: false`) |
 | `dz desk start\|stop\|status\|setup` | bàn điều phối Discord: bật, tắt, xem, in hướng dẫn cài |
 | `dz web` | in link trang trạng thái cho người vận hành (mã đổi mỗi lần dịch vụ khởi động) |
+| `dz web viewer [KEY…] [--days N]` / `dz web viewer --list` / `dz web viewer --revoke <id>` | cấp link board chỉ xem (không KEY = mọi project, hạn 90 ngày, `--days` 1–365) / xem các link / thu hồi một link |
 | `dz doctor` | kiểm môi trường |
 | `dz install [--shared-login] [--allow-protected]` / `dz uninstall` | ghi / xoá plist |
 
@@ -214,3 +215,18 @@ Mỗi nhịp, bước bug chạy nền (không chặn giám sát worker): quét 
 Trang người vận hành (cần cookie từ `dz web`): trạng thái `/`, gửi spec `/spec/new`, bản `/release/<KEY>/<version>` (kết quả đã lưu; `?fresh=1` hỏi lại Jira và git), app mới `/app/new`.
 
 `dz run` mở trang ở `127.0.0.1:8787`; `DZ_WEB_HOST`, `DZ_WEB_PORT` đổi địa chỉ (đặt trước khi chạy `dz install`, link trong mạng nội bộ không mã hoá). Không mở được cổng thì dịch vụ vẫn chạy, xem `web-error` trong log và dòng `Web` của `dz status`.
+
+## Board
+
+Trang chỉ xem cho team: `dz web viewer [KEY…]` in link `/board/<token>`. Mỗi project một khối: spec đang ở bước nào và chờ ai,
+tiến độ code (`done/total` plan từ `progress.json`), bug theo trạng thái Jira thật của bản đang theo dõi (nhóm theo trạng thái,
+sắp theo ưu tiên, đánh dấu bug do bug loop nhận), đợt bug đang mở, hoạt động 7 ngày (giờ Việt Nam), hạn mức và suất chạy.
+
+- Không có nút, form hay JavaScript; trang tự tải lại mỗi 60 giây. Không hiện link quiz/duyệt, nội dung spec hay log.
+- Link chỉ mở được trang board, hạn 90 ngày (đổi bằng `--days`), thu hồi bằng `dz web viewer --revoke <id>`; link sai, hết hạn
+  hay đã thu hồi trả 404 và bị giới hạn dò như link quiz. Token chỉ lưu dạng băm, mất link thì cấp link mới.
+- Xem trong mạng LAN: đặt `DZ_WEB_HOST=0.0.0.0` như cho quiz/duyệt; link không mã hoá, lộ link là lộ tên spec/bug tới khi thu hồi.
+- Bug lấy từ Jira chỉ đọc (`jira_search` qua `secrets/jira-mcp.json`) 15 phút một lần cho mỗi bản `open` đang bật theo dõi, cùng
+  phạm vi với bug loop nhưng mọi trạng thái; trang trễ tối đa 15 phút. Jira lỗi thì giữ dữ liệu cũ và ghi "chưa đồng bộ được"
+  kèm giờ lần cuối thành công. Quá 200 bug một bản thì chỉ giữ 200 bug ưu tiên cao nhất và ghi "còn nữa".
+- `dz doctor` dòng `board`: có `jira-mcp.json`, lần đồng bộ cuối của từng bản, số link xem còn hạn.

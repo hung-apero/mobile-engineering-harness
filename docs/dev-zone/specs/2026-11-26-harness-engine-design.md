@@ -115,6 +115,12 @@ Trên v2 (`~/.dev-zone-v2`, cổng 8788), AAP864 `live: false`, `discord: true`:
 - Mỗi project: spec đang ở bước nào + đang chờ ai; tiến độ code từ `progress.json`; bug theo **trạng thái Jira thật** của bản
   đang theo dõi (kể cả bug dev tự làm), theo ưu tiên; đợt bug; hoạt động 7 ngày; hạn mức.
 - Bug theo Jira cần một bước đồng bộ chỉ đọc (`jira_search` mỗi 15 phút cho bản đang theo dõi → bảng mới).
+- Brainstorm board 2026-11-26 (plan `2026-11-26-dev-zone-v2-02-board.md`):
+  - Người xem là team cùng mạng LAN (`DZ_WEB_HOST=0.0.0.0` như quiz/duyệt), không tunnel.
+  - Link là token riêng (lưu băm), hạn 90 ngày (`--days`), thu hồi được (`--revoke`), chỉ mở đúng trang board.
+  - Bug: phạm vi giống bug loop nhưng mọi trạng thái, cho mỗi bản `open` đang bật theo dõi; bảng `board_bugs`, tối đa 200 bug một bản.
+  - Trang render phía server, tự tải lại 60 giây; không JS, không form, không route API mới.
+  - Ngoài phạm vi: biểu đồ, lọc/tìm, xuất file, phân quyền theo người, truy cập ngoài mạng.
 
 ## 8. Ràng buộc **[C]**
 Chat tiếng Việt; code, path, commit tiếng Anh; không comment trong code; commit conventional, không nhắc AI. Chỉ commit local;

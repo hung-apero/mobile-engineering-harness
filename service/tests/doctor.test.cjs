@@ -6,6 +6,10 @@ const { spawnSync } = require('node:child_process');
 const { doctor } = require('../src/doctor.cjs');
 const { FEATURE_FILES } = require('../src/bugs/workspace.cjs');
 const { makeHome, writeScript, DZ } = require('./service-fixtures.cjs');
+const bugsStore = require('../src/bugs/store.cjs');
+const polling = require('../src/bugs/polling.cjs');
+const board = require('../src/board/store.cjs');
+const tokens = require('../src/board/tokens.cjs');
 
 const PMSET = 'System-wide power settings:\n sleep 0\n autorestart 1\n';
 
@@ -195,4 +199,33 @@ test('doctor wants python3 3.9 or newer', t => {
   assert.equal(find(run({ python3: () => ({ ok: true, stdout: '3.8\n' }) }), 'python3').level, 'THIẾU');
   assert.equal(find(run({ python3: () => ({ ok: false, missing: true, stdout: '' }) }), 'python3').level, 'THIẾU');
   assert.deepEqual(find(run({ python3: () => ({ ok: true, stdout: '3.12\n' }) }), 'python3'), { level: 'ĐẠT', name: 'python3', detail: '3.12' });
+});
+
+test('doctor reports the board sync of tracked versions and live viewer links', t => {
+  const { h, run } = setup(t);
+  assert.match(find(run(), 'board').detail, /chưa có jira-mcp\.json/);
+  jiraFile(h, 'jira-mcp.json', WRITE_ENV);
+  assert.deepEqual(find(run(), 'board'), { level: 'ĐẠT', name: 'board', detail: 'không bản nào đang theo dõi; 0 link xem còn hạn' });
+  const { db } = h.context();
+  const now = Date.now();
+  for (const version of ['1.9.2', '2.0.0']) {
+    bugsStore.ensureVersion(db, { project: 'ABC1', version, now });
+    polling.setPolling(db, 'ABC1', version, true, now);
+  }
+  board.saveSync(db, 'ABC1', '1.9.2', { at: now, ok: true, count: 3, capped: false }, now);
+  tokens.issueViewer(db, { keys: [] }, now);
+  tokens.revokeViewer(db, tokens.issueViewer(db, { keys: [] }, now).id, now);
+  tokens.issueViewer(db, { keys: [], days: 1 }, now - 2 * 24 * 60 * 60 * 1000);
+  let check = find(run(), 'board');
+  assert.equal(check.level, 'CẢNH BÁO');
+  assert.match(check.detail, /ABC1 1\.9\.2 đồng bộ Jira lúc \d\d:\d\d/);
+  assert.match(check.detail, /ABC1 2\.0\.0 chưa đồng bộ lần nào/);
+  assert.match(check.detail, /1 link xem còn hạn$/);
+  board.saveSync(db, 'ABC1', '2.0.0', { at: now, ok: false, error: 'Jira 503', lastOkAt: null }, now);
+  check = find(run(), 'board');
+  assert.equal(check.level, 'CẢNH BÁO');
+  assert.match(check.detail, /ABC1 2\.0\.0 chưa đồng bộ được: Jira 503/);
+  board.saveSync(db, 'ABC1', '2.0.0', { at: now, ok: true, count: 0, capped: false }, now);
+  assert.equal(find(run(), 'board').level, 'ĐẠT');
+  assert.doesNotMatch(JSON.stringify(run()), /SIEUBIMAT/);
 });

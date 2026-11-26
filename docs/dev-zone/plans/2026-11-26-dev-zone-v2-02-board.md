@@ -60,15 +60,15 @@ JS, không API. Token viewer riêng (băm trong bảng `viewer_tokens`, phạm v
   `specStep`).
 - `store.bugsOf(db, project) → [{ version, key, summary, status, priority, assignee, updatedAt }]`, `store.syncOf(db, project, version)`.
 
-- [ ] **Step 1: Test hỏng trước** (Jira giả qua `ctx.bugs.jira`):
+- [x] **Step 1: Test hỏng trước** (Jira giả qua `ctx.bugs.jira`):
   - `sync stores every bug of a tracked version with its real Jira status`
   - `sync replaces the rows of a version and drops bugs that left the scope`
   - `sync runs at most every 15 minutes per version and only for open tracked versions`
   - `a Jira error keeps the old rows, records the error and the last good time, and the tick goes on`
   - `sync only calls jira_search and works when the project is not live`
   - `the bug loop jql is unchanged` (so chuỗi `jql()` với bản chụp trước khi tách)
-- [ ] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Viết. **Step 4:** Chạy toàn bộ, Expected: PASS.
-- [ ] **Step 5: Commit** `feat(service): read-only Jira bug sync for the board`
+- [x] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Viết. **Step 4:** Chạy toàn bộ, Expected: PASS.
+- [x] **Step 5: Commit** `feat(service): read-only Jira bug sync for the board`
 
 ### Task 2: Token viewer và `dz web viewer`
 
@@ -84,11 +84,11 @@ JS, không API. Token viewer riêng (băm trong bảng `viewer_tokens`, phạm v
   `dz web viewer --list` → `#id  KEY…|mọi project  hết hạn YYYY-MM-DD  [đã thu hồi]`; `dz web viewer --revoke <id>`.
   `dz web` (không tham số) giữ nguyên link operator.
 
-- [ ] **Step 1: Test hỏng trước:** `viewer token is random, stored hashed and resolves to its keys`,
+- [x] **Step 1: Test hỏng trước:** `viewer token is random, stored hashed and resolves to its keys`,
   `an expired or revoked token resolves to nothing`, `dz web viewer prints a board link and rejects unknown keys and bad days`,
   `dz web viewer --list and --revoke`, `dz web without arguments still prints the operator link`.
-- [ ] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Viết. **Step 4:** Chạy toàn bộ, Expected: PASS.
-- [ ] **Step 5: Commit** `feat(service): revocable read-only viewer links`
+- [x] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Viết. **Step 4:** Chạy toàn bộ, Expected: PASS.
+- [x] **Step 5: Commit** `feat(service): revocable read-only viewer links`
 
 ### Task 3: Trang `/board/<token>`
 
@@ -115,7 +115,7 @@ JS, không API. Token viewer riêng (băm trong bảng `viewer_tokens`, phạm v
 - HTML: `<meta http-equiv="refresh" content="60">`, không `<form>`, không `<button>`, không `<script>`; mỗi project một khối;
   link quiz/review **không** hiện (chỉ chữ "chờ PO duyệt").
 
-- [ ] **Step 1: Test hỏng trước:**
+- [x] **Step 1: Test hỏng trước:**
   - `the board shows each spec step and who it waits for`
   - `a building spec shows done over total plans from progress.json`
   - `bugs are grouped by Jira status, sorted by priority, and loop bugs are marked`
@@ -124,8 +124,8 @@ JS, không API. Token viewer riêng (băm trong bảng `viewer_tokens`, phạm v
   - `the page refreshes every 60 seconds and has no form, button, script or quiz link`
   - `a sync error shows on the board with the last good time`
   - `a viewer token cannot open home, quiz, review or any api route, and a bad token is 404 and rate limited`
-- [ ] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Viết. **Step 4:** Chạy toàn bộ, Expected: PASS.
-- [ ] **Step 5: Commit** `feat(service): read-only project board page`
+- [x] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Viết. **Step 4:** Chạy toàn bộ, Expected: PASS.
+- [x] **Step 5: Commit** `feat(service): read-only project board page`
 
 ### Task 4: Vận hành
 
@@ -135,9 +135,9 @@ JS, không API. Token viewer riêng (băm trong bảng `viewer_tokens`, phạm v
   `docs/dev-zone/specs/2026-11-26-harness-engine-design.md` §7 (ghi các điểm **[C]** ở đầu plan này)
 - Test: `service/tests/doctor.test.cjs`
 
-- [ ] **Step 1: Test hỏng trước:** `doctor reports the board sync of tracked versions and live viewer links`.
-- [ ] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Viết. **Step 4:** Chạy toàn bộ, Expected: PASS.
-- [ ] **Step 5: Commit** `docs(service): board operation and doctor check`
+- [x] **Step 1: Test hỏng trước:** `doctor reports the board sync of tracked versions and live viewer links`.
+- [x] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Viết. **Step 4:** Chạy toàn bộ, Expected: PASS.
+- [x] **Step 5: Commit** `docs(service): board operation and doctor check`
 
 ## Rủi ro
 
