@@ -3,7 +3,7 @@ const { blockedOf, atGate, line } = require('./verify.cjs');
 const { copyLocalFiles } = require('./local-files.cjs');
 const { leaseDevice, freeDevice } = require('./device-lease.cjs');
 const { readSmoke, readDebts } = require('./smoke-report.cjs');
-const { collect, hardOpen, settleRound } = require('./provisional.cjs');
+const { settleRound } = require('./provisional.cjs');
 const { stepIndex } = require('../../vendor/learn-app/lib/looper-steps.cjs');
 const { noteSelfChange } = require('./change.cjs');
 const { closeParkedJob } = require('./phase-uidiff.cjs');
@@ -104,7 +104,6 @@ async function settleSmoke(run, state, error, serial) {
   const report = readSmoke(repo);
   const blocked = blockedOf(repo, 'headless-blocked.json');
   if (state.step !== 'handoff') {
-    if (hardOpen(run) && blocked) return move(run, 'provisional');
     if (report?.result === 'blocked' && state.step === 'smoke') decide(run, 'F05', 'spec-smoke-blocked', { device: report.device });
     return blocked ? needInput(run, blocked) : restart(run, `đang ở bước ${line(state.step, 20)}`, error);
   }
@@ -129,8 +128,6 @@ async function settleOldSmoke(run, job, error) {
     const problem = gatesProblem(state);
     if (problem) return park(run, problem);
     settleRound(run);
-    const forged = collect(run);
-    if (forged.length) return park(run, `worker tự chốt thay PO: ${forged.join(', ')}; chờ PO trả lời rồi dz spec retry ${run.spec.id}`);
     noteSelfChange(run);
   } catch (failure) {
     return restart(run, firstLine(failure), error);

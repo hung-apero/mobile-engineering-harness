@@ -10,7 +10,7 @@ const { reviewing } = require('./phase-code-review.cjs');
 const { candidate } = require('./phase-candidate.cjs');
 const { poTrial } = require('./phase-trial.cjs');
 const { landing } = require('./phase-landing.cjs');
-const { settleRound, applyAnswers, provisionalWait } = require('./provisional.cjs');
+const { settleRound, applyAnswers } = require('./provisional.cjs');
 const { askChange, applyChange } = require('./change.cjs');
 const { BUILD_STATES, idle: noJobs } = require('./build-kit.cjs');
 const { keyOf } = require('./segment.cjs');
@@ -29,7 +29,7 @@ function parked(run) {
 
 const PHASES = {
   new: start, reading: read, asking: advance, clarifying: advance, quiz, review, approved, parked,
-  'waiting-prereq': waitingPrereq, building: advanceBuild, provisional: provisionalWait, smoking: advanceBuild, uidiff, reviewing, candidate,
+  'waiting-prereq': waitingPrereq, building: advanceBuild, smoking: advanceBuild, uidiff, reviewing, candidate,
   'po-trial': poTrial, landing,
 };
 const STATES = Object.keys(PHASES);

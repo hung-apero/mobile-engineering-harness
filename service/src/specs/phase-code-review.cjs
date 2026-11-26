@@ -9,19 +9,18 @@ const { addQuestions, holdsInstall, toBuilding } = require('./provisional.cjs');
 const { pendingChange, askChange, noteSelfChange } = require('./change.cjs');
 const { fresh, keyOf, jobOf, again, stateOf } = require('./segment.cjs');
 const { move, decide, park, nameOf } = require('./kit.cjs');
-const { buildOf, saveBuild, saveNotes, learnState, batchIdOf, gitArgs, landingGit, sendBack, planOfFiles, clip } = require('./build-kit.cjs');
+const { buildOf, saveBuild, saveNotes, learnState, batchIdOf, gitArgs, landingGit, sendBack, clip } = require('./build-kit.cjs');
 
 const HARD = ['forbidden', 'permission', 'secret'];
 const describe = problems => problems.map(p => `${p.code}${p.file ? ` ${p.file}` : ''}: ${p.detail}`).join('; ');
 const versionBranchOf = run => bugs.getVersion(run.db, run.project.key, buildOf(run).version)?.branch ?? `dz/release-${buildOf(run).version}`;
 
-async function fixRound(run, text, names) {
+function fixRound(run, text) {
   const { fixes } = buildOf(run);
   const max = run.ctx.rulesFor(run.project.key).rules.F01.fix_rounds;
   decide(run, 'F01', 'spec-fix', { round: fixes + 1, text: clip(text, 500) });
   if (fixes >= max) return park(run, `sửa ${fixes} vòng vẫn chưa đạt: ${clip(text, 300)}`);
-  const { serial } = run.spec.data;
-  if (!(await sendBack(run, planOfFiles(run.spec.data.repo, names), text, `fix-${serial}`))) return null;
+  sendBack(run, text, `fix-${run.spec.data.serial}`);
   saveBuild(run, { fixes: fixes + 1 });
   return toBuilding(run);
 }
@@ -86,7 +85,7 @@ async function start(run) {
     return true;
   }
   if (problems.length) {
-    await fixRound(run, describe(problems), problems.map(p => p.file).filter(Boolean));
+    fixRound(run, describe(problems));
     return true;
   }
   return launch(run, candidate);
@@ -99,7 +98,7 @@ async function settle(run, job) {
   if (review.needsPo.length) addQuestions(run, review.needsPo);
   if (review.verdict === 'changes') {
     const lines = [...review.forbidden, ...review.findings.filter(f => f.severity !== 'minor').map(f => `${f.severity} ${f.file}:${f.line} ${f.text}`)];
-    return fixRound(run, `Reviewer yêu cầu sửa: ${lines.join('; ') || 'code chưa khớp spec'}`, review.findings.map(f => f.file));
+    return fixRound(run, `Reviewer yêu cầu sửa: ${lines.join('; ') || 'code chưa khớp spec'}`);
   }
   saveNotes(run, 'review', review.findings.map(f => `${f.file}:${f.line} ${f.text}`));
   return move(run, 'candidate', { data: fresh(run.spec, 'candidate') });

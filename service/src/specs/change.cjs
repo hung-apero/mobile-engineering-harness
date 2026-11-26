@@ -4,7 +4,7 @@ const kv = require('../kv.cjs');
 const { lineDiff } = require('./line-diff.cjs');
 const { oneLine } = require('./answers.cjs');
 const { move, patch, decide, openOnce, closeWaits, linkFor, nameOf } = require('./kit.cjs');
-const { plansOf, sendBack } = require('./build-kit.cjs');
+const { sendBack } = require('./build-kit.cjs');
 const { toBuilding } = require('./provisional.cjs');
 
 const textKey = id => `spec-change:${id}`;
@@ -28,19 +28,6 @@ function changedSections(before, after) {
   return [...changed, ...removed];
 }
 
-const words = value => String(value).normalize('NFC').toLowerCase();
-
-function affectedPlans(repo, changed) {
-  const plans = plansOf(repo);
-  const hit = (plan, { name, body }) => {
-    const planText = words(files.read(repo, `plans/${plan.file}`) ?? '');
-    const changedText = words(`${name}\n${body ?? ''}`);
-    return (name.length > 3 && planText.includes(words(name))) || [plan.id, ...plan.features, ...plan.screens].some(id => id.length > 2 && changedText.includes(words(id)));
-  };
-  const matched = changed.map(section => plans.filter(plan => hit(plan, section)).map(plan => plan.id));
-  return matched.some(ids => ids.length === 0) ? plans.map(plan => plan.id) : [...new Set(matched.flat())];
-}
-
 function approvedText(spec) {
   const { repo } = spec.data;
   const found = files.specVersions(repo).map(version => files.specAt(repo, version)).findLast(item => item?.sha === spec.approvedSha);
@@ -58,7 +45,7 @@ const feedbackSection = ({ day, note }) => `## Góp ý của PO (${day})\n\n${no
 const extras = (added, feedback) => [added, ...feedback.map(feedbackSection)].filter(Boolean).join('\n\n');
 const union = (a, b) => [...new Set([...a, ...b])];
 
-function propose(db, spec, { kind, base, added = '', plans, names, raw = null, rawSha = null, note = null }, now) {
+function propose(db, spec, { kind, base, added = '', names, raw = null, rawSha = null, note = null }, now) {
   const before = pendingChange(spec);
   const feedback = [...(before?.feedback ?? []), ...(note === null ? [] : [{ day: dayOf(now), note }])];
   const more = extras(added, feedback);
@@ -67,7 +54,7 @@ function propose(db, spec, { kind, base, added = '', plans, names, raw = null, r
   kv.set(db, textKey(spec.id), { text, raw, added, base }, now);
   const change = {
     n: (spec.data.change?.n ?? 0) + 1, kind, state: 'review', sha: files.sha256(text), feedback,
-    plans: union(kept?.plans ?? [], plans), names: union(kept?.names ?? [], names), base: base.sha, rawSha, at: now,
+    names: union(kept?.names ?? [], names), base: base.sha, rawSha, at: now,
   };
   closeWaits(db, spec.id, now, 'change');
   return store.patchData(db, spec.id, { change }, now);
@@ -79,10 +66,9 @@ function sourceChange(db, spec, { markdown, rawSha }, now) {
   const before = kv.get(db, rawKey(spec.id))?.text ?? files.read(spec.data.repo, 'inputs/spec-v1.md') ?? '';
   const changed = changedSections(before, markdown);
   if (!changed.length) return null;
-  const plans = affectedPlans(spec.data.repo, changed);
   const names = changed.map(item => item.name);
-  propose(db, spec, { kind: 'source', base: baseOf(files.latestSpec(spec.data.repo)), added: sourceSection(changed, now), plans, names, raw: markdown, rawSha }, now);
-  return { plans, names };
+  propose(db, spec, { kind: 'source', base: baseOf(files.latestSpec(spec.data.repo)), added: sourceSection(changed, now), names, raw: markdown, rawSha }, now);
+  return { names };
 }
 
 function noteSelfChange(run) {
@@ -91,8 +77,8 @@ function noteSelfChange(run) {
   const known = pendingChange(spec);
   if (!latest || latest.sha === spec.approvedSha || known?.base === latest.sha) return;
   const { added = '', raw = null } = known?.kind === 'source' ? kv.get(run.db, textKey(spec.id)) : {};
-  const { kind = 'self', plans = [], names = [`spec-v${latest.version}`], rawSha = null } = known?.kind === 'source' ? known : {};
-  run.spec = propose(run.db, spec, { kind, base: baseOf(latest), added, plans, names, raw, rawSha }, run.now);
+  const { kind = 'self', names = [`spec-v${latest.version}`], rawSha = null } = known?.kind === 'source' ? known : {};
+  run.spec = propose(run.db, spec, { kind, base: baseOf(latest), added, names, raw, rawSha }, run.now);
   decide(run, 'S04', 'spec-changed-by-agent', { sha: latest.sha, version: latest.version });
 }
 
@@ -112,15 +98,14 @@ function changeView(db, spec) {
 function approveChange(run, { quote, by }) {
   const change = { ...run.spec.data.change, state: 'approved', quote: oneLine(quote, 500), by, approvedAt: run.now };
   patch(run, { change });
-  decide(run, 'S04', 'spec-change-approved', { sha: change.sha, quote: change.quote, by, plans: change.plans });
+  decide(run, 'S04', 'spec-change-approved', { sha: change.sha, quote: change.quote, by, names: change.names });
   closeWaits(run.db, run.spec.id, run.now, 'change');
 }
 
 function feedbackChange(run, note) {
   const { change } = run.spec.data;
   const { base, added, raw } = kv.get(run.db, textKey(run.spec.id));
-  const plans = change.kind === 'self' ? plansOf(run.spec.data.repo).map(plan => plan.id) : change.plans;
-  run.spec = propose(run.db, run.spec, { kind: 'source', base, added, plans, names: change.names, raw, rawSha: change.rawSha, note }, run.now);
+  run.spec = propose(run.db, run.spec, { kind: 'source', base, added, names: change.names, raw, rawSha: change.rawSha, note }, run.now);
   askChange(run);
 }
 
@@ -141,8 +126,7 @@ async function applyChange(run) {
   const version = change.kind === 'source' ? writeSpec(run, saved.text) : null;
   const started = run.spec.state !== 'waiting-prereq';
   if (change.kind === 'source' && started) {
-    const reason = `Spec đổi và PO đã duyệt (${change.names.join(', ')}): làm theo mục "Thay đổi" và "Góp ý của PO" cuối inputs/spec-v${version}.md\n\n${extras(saved.added, change.feedback ?? [])}`;
-    if (!(await sendBack(run, change.plans, reason, `change-${change.n}`))) return true;
+    sendBack(run, `Spec đổi và PO đã duyệt (${change.names.join(', ')}): làm theo mục "Thay đổi" và "Góp ý của PO" cuối inputs/spec-v${version}.md\n\n${extras(saved.added, change.feedback ?? [])}`, `change-${change.n}`);
   }
   if (saved.raw) kv.set(run.db, rawKey(run.spec.id), { text: saved.raw }, run.now);
   move(run, run.spec.state, { specSha: change.sha, approvedSha: change.sha, data: { change: { ...change, state: 'applied' }, ...(change.rawSha && { rawSha: change.rawSha }) } });
@@ -150,4 +134,4 @@ async function applyChange(run) {
   return true;
 }
 
-module.exports = { sourceChange, noteSelfChange, askChange, changeView, approveChange, feedbackChange, applyChange, pendingChange, inReview, changedSections, affectedPlans };
+module.exports = { sourceChange, noteSelfChange, askChange, changeView, approveChange, feedbackChange, applyChange, pendingChange, inReview, changedSections };

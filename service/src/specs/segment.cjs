@@ -33,8 +33,9 @@ function writeConfig(run, slots) {
   if (!run.spec.approvedSha) files.remove(repo, 'inputs/approval.json');
 }
 
-function forged({ repo, rawSha }) {
-  return Boolean(rawSha) && hashText(files.read(repo, 'inputs/spec-v1.md') ?? '') !== rawSha;
+function forged({ repo, v1Sha, rawSha }) {
+  const expected = v1Sha ?? rawSha;
+  return Boolean(expected) && hashText(files.read(repo, 'inputs/spec-v1.md') ?? '') !== expected;
 }
 
 function launch(run, { slots = 1, extra = {} } = {}) {

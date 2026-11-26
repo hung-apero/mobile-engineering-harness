@@ -76,8 +76,7 @@ async function lost(run, batch) {
   }
   const branch = branchOf(run);
   decide(run, 'F04', 'spec-conflict', { batchId: batch.id, branch });
-  const reason = `Xung đột khi gộp vào ${branch}: ở nhánh learn-app chạy git fetch origin ${branch} rồi git merge FETCH_HEAD, gỡ xung đột giữ cả hai phía, build lại.`;
-  if (!(await sendBack(run, [], reason, `conflict-${batch.id}`))) return null;
+  sendBack(run, `Xung đột khi gộp vào ${branch}: trên nhánh hiện tại chạy git fetch origin ${branch} rồi git merge FETCH_HEAD, gỡ xung đột giữ cả hai phía, build lại.`, `conflict-${batch.id}`);
   saveBuild(run, { conflicts: 1 });
   return toBuilding(run);
 }

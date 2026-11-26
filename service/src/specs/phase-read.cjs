@@ -82,7 +82,7 @@ async function read(run) {
   for (const [name, text] of Object.entries(previous.files)) files.write(repo, path.join('inputs', name), text);
   move(run, 'asking', {
     title: spec.title || info.title || title || '',
-    data: { repo, app: info.app ?? run.project.key, figmaUrl: figma.url, rawSha: hashText(markdown), notes: previous.notes, readFailures: 0, readAt: 0, reviewFloor: 1, ...fresh(spec, 'ask') },
+    data: { repo, app: info.app ?? run.project.key, figmaUrl: figma.url, rawSha: hashText(markdown), v1Sha: hashText(markdown), notes: previous.notes, readFailures: 0, readAt: 0, reviewFloor: 1, ...fresh(spec, 'ask') },
   });
   return true;
 }

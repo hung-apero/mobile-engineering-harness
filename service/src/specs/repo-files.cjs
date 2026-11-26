@@ -58,15 +58,15 @@ function readJson(repo, rel) {
 
 const specPath = version => (version === 1 ? 'inputs/spec-v1.md' : `clarified/spec-v${version}.md`);
 
-function clarifiedVersions(repo) {
-  const probe = realParent(repo, 'clarified/x');
+function versionsIn(repo, dir) {
+  const probe = realParent(repo, `${dir}/x`);
   if (!probe || !fs.existsSync(path.dirname(probe))) return [];
   return fs.readdirSync(path.dirname(probe)).map(name => name.match(/^spec-v(\d{1,6})\.md$/)?.[1]).filter(Boolean).map(Number).filter(n => n >= 2);
 }
 
 function specVersions(repo) {
   const first = read(repo, specPath(1)) === null ? [] : [1];
-  return [...first, ...clarifiedVersions(repo)].sort((a, b) => a - b);
+  return [...new Set([...first, ...versionsIn(repo, 'clarified'), ...versionsIn(repo, 'inputs')])].sort((a, b) => a - b);
 }
 
 function entryBytes(full, entry) {
@@ -94,7 +94,7 @@ function inputsSha(repo) {
 }
 
 function specAt(repo, version) {
-  const markdown = read(repo, specPath(version));
+  const markdown = read(repo, specPath(version)) ?? (version > 1 ? read(repo, `inputs/spec-v${version}.md`) : null);
   return markdown === null ? null : { version, markdown, sha: sha256(markdown) };
 }
 

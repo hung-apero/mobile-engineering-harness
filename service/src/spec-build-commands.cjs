@@ -73,7 +73,7 @@ function refreshBuilding(ctx, spec, { markdown, rawSha }, now) {
   const change = sourceChange(ctx.db, spec, { markdown, rawSha }, now);
   if (!change) return [`Spec #${spec.id} chỉ đổi khoảng trắng`];
   record(ctx.db, { project: spec.project, code: 'S04', ruleVersion: ruleVersionOf(ctx, spec.project), evidence: { specId: spec.id, from: spec.state, ...change }, action: 'spec-changed-while-building' }, now);
-  return [`Spec #${spec.id} đổi khi đang code: PO duyệt phần đổi (${change.names.join(', ')})`, `Plan bị ảnh hưởng: ${change.plans.join(', ') || 'chưa có plan'}; phần khác chạy tiếp`];
+  return [`Spec #${spec.id} đổi khi đang code: PO duyệt phần đổi (${change.names.join(', ')})`, 'Duyệt xong thì phần đổi gửi lại cho đoạn code'];
 }
 
 module.exports = { build, prereq, validBuild, validPrereq, refreshBuilding, isBuilding };

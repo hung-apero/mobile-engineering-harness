@@ -37,9 +37,8 @@ async function applyNotes(run) {
   const { pendingNotes = [] } = buildOf(run);
   const last = pendingNotes.at(-1);
   if (!last) return false;
-  const told = pendingNotes.map(({ name, note }) => `(.learn-app/${name})\n${note}`).join('\n\n');
-  const reason = `PO thử bản cài và góp ý. Tự xác định plan liên quan, reopen thêm plan nếu cần.\n\n${told}`;
-  if (!(await sendBack(run, [], reason, `trial-${last.number}`))) return false;
+  const told = pendingNotes.map(({ name, note }) => `(.harness-run/${name})\n${note}`).join('\n\n');
+  sendBack(run, `PO thử bản cài và góp ý.\n\n${told}`, `trial-${last.number}`);
   saveBuild(run, { pendingNotes: [] });
   toBuilding(run);
   return true;
