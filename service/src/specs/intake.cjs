@@ -50,8 +50,8 @@ function readFile(ref) {
 async function loadSource(source, { confluence } = {}) {
   const type = source?.type;
   if (type === 'url') {
-    const { id } = parseRef(source.ref);
-    const page = await confluence.page(id);
+    parseRef(source.ref);
+    const page = await confluence.page(source.ref);
     return { title: page.title, markdown: page.markdown, source: { type, ref: source.ref } };
   }
   if (type === 'path') {

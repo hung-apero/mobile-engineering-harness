@@ -20,11 +20,20 @@ function fake(handlers) {
   };
 }
 
-test('parseRef takes a page id, /pages/<id>/ and ?pageId= links and refuses the rest', () => {
+const tinyOf = id => {
+  const bytes = Buffer.alloc(8);
+  bytes.writeBigUInt64LE(BigInt(id));
+  return bytes.toString('base64').replace(/=+$/, '').replace(/A+$/, '').replace(/\//g, '-').replace(/\+/g, '_');
+};
+
+test('parseRef takes a page id, /pages/<id>/, ?pageId=, /display/<space>/<title> and /x/<tiny> links and refuses the rest', () => {
   assert.deepEqual(parseRef('332470208'), { id: '332470208' });
   assert.deepEqual(parseRef(' https://wiki.example/spaces/AB/pages/332470208/Title '), { id: '332470208' });
   assert.deepEqual(parseRef('https://wiki.example/pages/viewpage.action?pageId=77'), { id: '77' });
-  for (const bad of ['', 'abc', 'https://wiki.example/display/AB/Title', 'ftp://x/pages/5/', '12345678901234567', undefined]) {
+  assert.deepEqual(parseRef('https://wiki.example/display/AB/Title'), { space: 'AB', title: 'Title' });
+  assert.deepEqual(parseRef('https://confluence.apero.vn/display/PROJ/%5BAAP864%5D+Phase+15%3A+SDK+custom+learning+path'), { space: 'PROJ', title: '[AAP864] Phase 15: SDK custom learning path' });
+  for (const id of ['332470208', '2392073', '77', '4294967296']) assert.deepEqual(parseRef(`https://wiki.example/x/${tinyOf(id)}`), { id });
+  for (const bad of ['', 'abc', 'https://wiki.example/', 'https://wiki.example/display/AB', 'ftp://x/pages/5/', '12345678901234567', 'https://wiki.example/x/!!', undefined]) {
     assert.throws(() => parseRef(bad), e => e instanceof ConfluenceError && e.code === 'INVALID');
   }
 });
@@ -35,6 +44,16 @@ test('page reads confluence_get_page as markdown and returns the trimmed shape',
   assert.deepEqual(await c.page('https://wiki.example/pages/123/x'), { id: '123', title: 'APP1 Phase 1: demo', markdown: '# demo\n\ntext', version: 4, url: 'https://wiki.example/pages/123' });
   assert.deepEqual(f.calls, [['confluence_get_page', { page_id: '123', convert_to_markdown: true }]]);
   assert.deepEqual(f.modes, ['read']);
+});
+
+test('a /display/ link reads the page by space and title, and a comment finds its id first', async () => {
+  const f = fake({ confluence_get_page: () => text(page), confluence_get_comments: () => text([]), confluence_add_comment: () => text({}) });
+  const ref = 'https://wiki.example/display/AB/APP1+Phase+1%3A+demo';
+  const c = createConfluence({ configFile: '/none', connect: f.connect, live: true });
+  assert.equal((await c.page(ref)).id, '123');
+  assert.deepEqual(f.calls[0], ['confluence_get_page', { title: 'APP1 Phase 1: demo', space_key: 'AB', convert_to_markdown: true }]);
+  await c.commentOnce(ref, 'mk', 'xong');
+  assert.deepEqual(f.calls.slice(1).map(([name, args]) => [name, args.page_id ?? args.title]), [['confluence_get_page', 'APP1 Phase 1: demo'], ['confluence_get_comments', '123'], ['confluence_add_comment', '123']]);
 });
 
 test('an empty or malformed page is refused with a code', async () => {

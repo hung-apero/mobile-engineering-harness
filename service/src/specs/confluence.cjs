@@ -24,10 +24,28 @@ function parseRef(input) {
   } catch {
     throw new ConfluenceError('Link Confluence hoặc mã trang không hợp lệ', { code: 'INVALID' });
   }
-  const id = url.searchParams.get('pageId') ?? url.pathname.match(/\/pages\/(\d{1,15})(?:\/|$)/)?.[1];
-  if (!/^https?:$/.test(url.protocol) || !PAGE_ID.test(id ?? '')) throw new ConfluenceError('Link Confluence không có mã trang (cần dạng .../pages/<số>/... hoặc ?pageId=<số>)', { code: 'INVALID' });
-  return { id };
+  const invalid = () => new ConfluenceError('Link Confluence không chỉ ra trang nào (cần .../pages/<số>/..., ?pageId=<số>, /display/<space>/<tiêu đề> hoặc /x/<mã>)', { code: 'INVALID' });
+  if (!/^https?:$/.test(url.protocol)) throw invalid();
+  const id = url.searchParams.get('pageId') ?? url.pathname.match(/\/pages\/(\d{1,15})(?:\/|$)/)?.[1] ?? tinyId(url.pathname);
+  if (PAGE_ID.test(id ?? '')) return { id };
+  const display = url.pathname.match(/\/display\/([^/]+)\/([^/]+)\/?$/);
+  if (!display) throw invalid();
+  const [space, title] = display.slice(1).map(part => decodeURIComponent(part.replace(/\+/g, ' ')).trim());
+  if (!space || !title) throw invalid();
+  return { space, title };
 }
+
+function tinyId(pathname) {
+  const code = pathname.match(/\/x\/([A-Za-z0-9_-]{1,11})\/?$/)?.[1];
+  if (!code) return null;
+  const base64 = code.replace(/-/g, '/').replace(/_/g, '+').padEnd(Math.ceil(code.length / 4) * 4, 'A');
+  const bytes = Buffer.from(base64, 'base64');
+  let value = 0n;
+  for (let i = bytes.length - 1; i >= 0; i--) value = (value << 8n) | BigInt(bytes[i]);
+  return value > 0n ? value.toString() : null;
+}
+
+const pageArgs = ref => (ref.id ? { page_id: ref.id } : { title: ref.title, space_key: ref.space });
 
 function readServer(configFile) {
   const info = fs.lstatSync(configFile);
@@ -85,23 +103,27 @@ function createConfluence({ configFile, live = false, record = () => {}, connect
     }
   };
 
-  const getPage = id => wrap(async () => parse(await readClient.call('confluence_get_page', { page_id: id, convert_to_markdown: true })));
+  const getPage = ref => wrap(async () => parse(await readClient.call('confluence_get_page', { ...pageArgs(ref), convert_to_markdown: true })));
+  const idOf = async ref => ref.id ?? String((await getPage(ref))?.metadata?.id ?? '');
 
-  async function page(ref) {
-    const { id } = parseRef(ref);
-    const meta = (await getPage(id))?.metadata;
+  async function page(input) {
+    const ref = parseRef(input);
+    const id = ref.id ?? ref.title;
+    const meta = (await getPage(ref))?.metadata;
     const markdown = meta?.content?.value;
     if (typeof markdown !== 'string' || !markdown.trim()) throw new ConfluenceError(`Trang ${id} trống hoặc không đọc được nội dung`, { code: 'EMPTY' });
     if (markdown.length > MAX_MARKDOWN) throw new ConfluenceError(`Trang ${id} quá lớn`, { code: 'TOO_LARGE' });
     return { id: String(meta.id ?? id), title: String(meta.title ?? ''), markdown, version: Number(meta.version) || 0, url: String(meta.url ?? '') };
   }
 
-  async function commentOnce(ref, marker, text) {
-    const { id } = parseRef(ref);
+  async function commentOnce(input, marker, text) {
+    const ref = parseRef(input);
     if (!live) {
-      record('would', `confluence comment ${id} ${marker}`);
+      record('would', `confluence comment ${ref.id ?? ref.title} ${marker}`);
       return { dryRun: true };
     }
+    const id = await idOf(ref);
+    if (!PAGE_ID.test(id)) throw new ConfluenceError(`Không tìm được mã trang của ${ref.title}`);
     const carries = () => wrap(async () => JSON.stringify(parse(await writeClient.call('confluence_get_comments', { page_id: id })) ?? '').includes(marker));
     if (await carries()) return { skipped: true };
     const body = `${text.startsWith('[Claude]') ? text : `[Claude] ${text}`}\n\n${marker}`;
