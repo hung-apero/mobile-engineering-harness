@@ -36,6 +36,7 @@ function claudeArgs(paths, sessionId) {
     '--setting-sources', 'project',
     '--settings', paths.settings,
     '--mcp-config', paths.mcp,
+    '--append-system-prompt-file', paths.guide,
     '--disable-slash-commands',
     '--no-chrome',
     '--session-id', sessionId,

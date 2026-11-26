@@ -17,7 +17,7 @@ test('argv is fixed: channel plugin, dontAsk, no built-in tools, no bypass, no s
   const paths = deskPaths('/x');
   assert.deepEqual(claudeArgs(paths, 'sid'), [
     '--channels', 'plugin:discord@claude-plugins-official', '--permission-mode', 'dontAsk', '--tools', '', '--setting-sources', 'project',
-    '--settings', '/x/desk/settings.json', '--mcp-config', '/x/desk/mcp.json', '--disable-slash-commands', '--no-chrome', '--session-id', 'sid', '--', PROMPT,
+    '--settings', '/x/desk/settings.json', '--mcp-config', '/x/desk/mcp.json', '--append-system-prompt-file', '/x/desk/CLAUDE.md', '--disable-slash-commands', '--no-chrome', '--session-id', 'sid', '--', PROMPT,
   ]);
   assert.ok(!claudeArgs(paths, 'sid').some(arg => /dangerous|bypass|strict-mcp/.test(arg)));
 });
