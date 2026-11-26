@@ -1,12 +1,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const YAML = require('yaml');
-const { fail, isPlainObject, isString, requireString, requireStrings, optionalPaths, buildLocalFiles, buildCommands, buildHarnessCommit, requireDiscordId, buildChannel, buildE2eDevices, buildRoles, COMMAND_FIELDS } = require('./project-fields.cjs');
+const { fail, isPlainObject, isString, requireString, requireStrings, optionalPaths, buildLocalFiles, buildCommands, buildHarnessCommit, requireDiscordId, buildChannel, buildE2eDevices, buildRoles, buildKnowledge, COMMAND_FIELDS } = require('./project-fields.cjs');
 
 const KEY = /^[A-Z][A-Z0-9]+$/;
 const REPO = /^[\w.-]+\/[\w.-]+$/;
 
-const TOP_FIELDS = ['key', 'repo', 'base', 'checkout', 'flavor', 'package', 'jiraStatus', 'people', 'specUrl', 'figmaUrl', 'excludedDevices', 'enabled', 'live', 'discord', 'localFiles', 'commands', 'harnessCommit', 'forbidden', 'channel', 'roles', 'e2eDevices'];
+const TOP_FIELDS = ['key', 'repo', 'base', 'checkout', 'flavor', 'package', 'jiraStatus', 'people', 'specUrl', 'figmaUrl', 'excludedDevices', 'enabled', 'live', 'discord', 'localFiles', 'commands', 'harnessCommit', 'forbidden', 'channel', 'roles', 'e2eDevices', 'knowledge'];
 const JIRA_FIELDS = ['waiting', 'inProgress', 'resolved', 'reopened', 'done'];
 const PEOPLE_REQUIRED = ['po', 'qa', 'devOnCall'];
 const PEOPLE_FIELDS = [...PEOPLE_REQUIRED, 'poBackup'];
@@ -124,6 +124,7 @@ function buildProject(doc, expectedKey, dzHome) {
     commands: buildCommands(requireTable(doc, 'commands', COMMAND_FIELDS)),
     harnessCommit: buildHarnessCommit(doc),
     forbidden: optionalPaths(doc, 'forbidden'),
+    knowledge: buildKnowledge(doc),
     ...buildChannel(doc),
     ...buildRoles(doc),
     ...buildE2eDevices(doc),

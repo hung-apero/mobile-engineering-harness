@@ -25,6 +25,7 @@ test('valid file loads', () => {
     enabled: true,
     live: false,
     discord: false,
+    knowledge: [],
     localFiles: ['local.properties'],
     commands: COMMANDS,
     harnessCommit: 'b4f5855',
@@ -241,4 +242,17 @@ test('an overlay file next to the project is not read as a project', () => {
   fs.writeFileSync(path.join(dir, 'ABC1.overlay.yaml'), 'product: abc1\n');
   const { projects, errors } = loadProjects(dir, { dzHome });
   assert.deepEqual([[...projects.keys()], errors], [['ABC1'], []]);
+});
+
+test('knowledge is an optional list of confluence pages', () => {
+  const { dzHome, dir } = setup();
+  const kb = 'https://confluence.apero.vn/pages/viewpage.action?pageId=323388917';
+  fs.writeFileSync(path.join(dir, 'ABC1.yaml'), yamlFor('ABC1', dzHome, { knowledge: [kb] }));
+  assert.deepEqual(loadProjects(dir, { dzHome }).projects.get('ABC1').knowledge, [kb]);
+  fs.writeFileSync(path.join(dir, 'ABC1.yaml'), yamlFor('ABC1', dzHome));
+  assert.deepEqual(loadProjects(dir, { dzHome }).projects.get('ABC1').knowledge, []);
+  fs.writeFileSync(path.join(dir, 'ABC1.yaml'), yamlFor('ABC1', dzHome, { knowledge: ['https://example.com/no-page'] }));
+  const { projects, errors } = loadProjects(dir, { dzHome });
+  assert.equal(projects.has('ABC1'), false);
+  assert.match(JSON.stringify(errors), /knowledge/);
 });

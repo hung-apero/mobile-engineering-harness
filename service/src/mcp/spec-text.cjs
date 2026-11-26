@@ -24,7 +24,7 @@ function readSpec(text) {
   try {
     parseRef(sources[0]);
   } catch {
-    throw invalid('Link spec không có mã trang Confluence. Hãy gửi link dạng .../pages/<số>/...');
+    throw invalid('Link spec không chỉ ra trang Confluence nào. Hãy gửi link mở thẳng trang spec.');
   }
   return { source: { type: 'url', ref: sources[0] }, figma: figma[0] ?? null };
 }

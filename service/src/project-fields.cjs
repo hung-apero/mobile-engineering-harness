@@ -1,4 +1,5 @@
 const path = require('node:path');
+const { parseRef } = require('./specs/confluence.cjs');
 
 const COMMAND_REQUIRED = ['compile', 'unitTest', 'assemble'];
 const COMMAND_OPTIONAL = ['lint', 'distribute'];
@@ -76,6 +77,19 @@ function buildE2eDevices(doc) {
   return { e2eDevices: [...list] };
 }
 
+function buildKnowledge(doc) {
+  const list = doc.knowledge ?? [];
+  if (!Array.isArray(list) || list.length > 10 || !list.every(isString)) fail('knowledge', 'phải là danh sách tối đa 10 link Confluence');
+  for (const ref of list) {
+    try {
+      parseRef(ref);
+    } catch {
+      fail('knowledge', `${ref}: không phải link trang Confluence`);
+    }
+  }
+  return [...list];
+}
+
 function buildRoles(doc) {
   if (doc.roles === undefined) return {};
   if (!isPlainObject(doc.roles)) fail('roles', 'phải là một bảng');
@@ -87,4 +101,4 @@ function buildRoles(doc) {
   return { roles };
 }
 
-module.exports = { fail, isPlainObject, isString, requireString, requireStrings, optionalPaths, buildLocalFiles, buildCommands, buildHarnessCommit, requireDiscordId, buildChannel, buildE2eDevices, buildRoles, COMMAND_FIELDS };
+module.exports = { fail, isPlainObject, isString, requireString, requireStrings, optionalPaths, buildLocalFiles, buildCommands, buildHarnessCommit, requireDiscordId, buildChannel, buildE2eDevices, buildRoles, buildKnowledge, COMMAND_FIELDS };

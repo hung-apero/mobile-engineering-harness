@@ -33,7 +33,8 @@ test('a spec goes new to approved through quiz and review with the real state co
   assert.deepEqual(s.answer(), { ok: true, missing: [] });
   assert.deepEqual([s.spec().state, s.waits().length], ['clarifying', 0]);
   await s.until(() => s.running().length === 1);
-  assert.equal(JSON.parse(s.read('inputs/headless.json')).segment, 'clarify');
+  const clarifyConfig = JSON.parse(s.read('inputs/headless.json'));
+  assert.deepEqual([clarifyConfig.segment, clarifyConfig.skipped], ['clarify', ['Q3']]);
   const answers = Object.fromEntries(parseQuestions(s.read('questions.md')).map(q => [q.id, q.answer]));
   assert.deepEqual(answers, { Q1: { kind: 'po', label: 'B', text: 'Ở lại' }, Q2: { kind: 'agent', label: 'A', text: 'Figma 1:2' }, Q3: null });
 

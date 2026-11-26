@@ -20,19 +20,42 @@ const due = (db, now, proj = project) => pings.duePings(db, { project: proj, rul
 const open = (db, subject, at, role = 'po', extra = {}) => pings.openWait(db, { project: 'AAP1', role, subject, ...extra }, at);
 const ping = (db, group, now) => pings.recordPing(db, group.waitIds, now, { ok: true });
 
-test('opened 10:00 → due 14:00 same day, not 13:59', () => {
+test('a new PO wait is announced at once; after that 10:00 notice the reminder is due 14:00, not 13:59', () => {
   const db = memDb();
   open(db, 'spec', t('2026-11-25T10:00:00'));
+  const [notice] = due(db, t('2026-11-25T10:00:00'));
+  assert.deepEqual(notice.mentions, [people.po]);
+  ping(db, notice, t('2026-11-25T10:00:00'));
   assert.equal(due(db, t('2026-11-25T13:59:00')).length, 0);
   assert.equal(due(db, t('2026-11-25T14:00:00')).length, 1);
 });
 
-test('opened Friday 16:00 → due Monday 11:00', () => {
+test('a PO wait opened Thursday 18:30 is announced at 18:30 with its link; the reminder waits for Friday 13:00', () => {
   const db = memDb();
-  open(db, 'spec', t('2026-11-27T16:00:00'));
-  assert.equal(due(db, t('2026-11-27T17:59:00')).length, 0);
-  assert.equal(due(db, t('2026-11-30T10:59:00')).length, 0);
-  assert.equal(due(db, t('2026-11-30T11:00:00')).length, 1);
+  open(db, 'quiz', t('2026-11-26T18:30:00'), 'po', { link: 'http://10.0.0.5:8788/quiz/abc' });
+  const [notice] = due(db, t('2026-11-26T18:30:00'));
+  assert.match(notice.content, /quiz http:\/\/10\.0\.0\.5:8788\/quiz\/abc/);
+  ping(db, notice, t('2026-11-26T18:30:00'));
+  assert.equal(due(db, t('2026-11-26T22:00:00')).length, 0);
+  assert.equal(due(db, t('2026-11-27T12:59:00')).length, 0);
+  assert.equal(due(db, t('2026-11-27T13:00:00')).length, 1);
+});
+
+test('outside working hours a new PO wait is announced alone, older reminders still wait for the opening', () => {
+  const db = memDb();
+  const old = open(db, 'spec cũ', t('2026-11-25T09:00:00'));
+  db.prepare('UPDATE waits SET ping_count = 1, last_ping_at = ? WHERE id = ?').run(t('2026-11-25T09:00:00'), old);
+  const fresh = open(db, 'quiz mới', t('2026-11-26T20:00:00'));
+  const groups = due(db, t('2026-11-26T20:00:00'));
+  assert.deepEqual(groups.map(g => g.waitIds), [[fresh]]);
+  assert.doesNotMatch(groups[0].content, /spec cũ/);
+});
+
+test('QA and dev waits are not announced outside working hours', () => {
+  const db = memDb();
+  open(db, 'bug', t('2026-11-26T20:00:00'), 'dev');
+  open(db, 'test', t('2026-11-26T20:00:00'), 'qa');
+  assert.equal(due(db, t('2026-11-26T20:00:00')).length, 0);
 });
 
 test('third ping mentions PO and backup; no backup configured → PO only', () => {
@@ -100,7 +123,8 @@ test('send failure or 429 leaves ping_count unchanged and is retried, not before
 
 test('outside working hours nothing is due; overdue one is delivered at the next opening; 18:00 deadline waits for opening', () => {
   const db = memDb();
-  open(db, 'spec', t('2026-11-25T14:00:00'));
+  const id = open(db, 'spec', t('2026-11-25T14:00:00'));
+  db.prepare('UPDATE waits SET ping_count = 1, last_ping_at = ? WHERE id = ?').run(t('2026-11-25T14:00:00'), id);
   assert.equal(due(db, t('2026-11-25T18:00:00')).length, 0);
   assert.equal(due(db, t('2026-11-26T08:59:00')).length, 0);
   assert.equal(due(db, t('2026-11-26T09:00:00')).length, 1);

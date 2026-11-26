@@ -43,12 +43,12 @@ test('figmaKeyOf reads design, file and proto links only', () => {
   assert.equal(figmaKeyOf(undefined), null);
 });
 
-test('loadSource url goes through confluence with the parsed page id', async () => {
+test('loadSource url goes through confluence with the link it was given', async () => {
   const seen = [];
   const confluence = { page: async id => (seen.push(id), { title: 'AAP1 t', markdown: 'body' }) };
   const out = await loadSource({ type: 'url', ref: 'https://wiki.example/pages/42/x' }, { confluence });
   assert.deepEqual(out, { title: 'AAP1 t', markdown: 'body', source: { type: 'url', ref: 'https://wiki.example/pages/42/x' } });
-  assert.deepEqual(seen, ['42']);
+  assert.deepEqual(seen, ['https://wiki.example/pages/42/x']);
   await assert.rejects(loadSource({ type: 'url', ref: 'nonsense' }, { confluence }), /không hợp lệ/);
 });
 

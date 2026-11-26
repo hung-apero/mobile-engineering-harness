@@ -7,7 +7,7 @@ làm đúng **một đoạn** rồi thoát. File này ưu tiên hơn `single.md`
 
 | Đường dẫn | Ai ghi | Nội dung |
 |---|---|---|
-| `inputs/headless.json` | service | `{ spec, figma: {url}\|null, app, case: existing\|new, segment: ask\|clarify\|build, notes?, rework?[] }` |
+| `inputs/headless.json` | service | `{ spec, figma: {url}\|null, app, case: existing\|new, segment: ask\|clarify\|build, notes?, rework?[], references?[], skipped?[] }` — `references`: `[{ kind: kb\|linked, file, title }]`, file trong `inputs/kb/`, `inputs/linked/` (KB của project, trang Confluence spec link tới); đọc như một phần của spec. `skipped`: id câu không chặn PO đã thấy mà bỏ trống |
 | `inputs/spec-v1.md`, `inputs/notes-<N>.md`, `inputs/rework-<N>.md`, `inputs/approval.json` | service | spec gốc, góp ý PO, yêu cầu sửa, lời duyệt |
 | `questions.md`, `triage.json` | bạn (service ghi câu trả lời vào `questions.md`) | câu hỏi cho PO và phân loại |
 | `scout.md`, `figma/` | bạn | bản đồ app, digest Figma |
@@ -24,7 +24,7 @@ mọi đầu ra nằm trong `.harness-run/`.
 | `segment` | Làm | Dừng khi |
 |---|---|---|
 | `ask` | Skill `spec-clear` ở chế độ không người: scout ∥ digest Figma, rồi viết `questions.md` + `triage.json` | viết xong, kể cả khi chỉ có dòng `Không có câu hỏi` |
-| `clarify` | Đọc `questions.md` (dòng `PO chọn` / `PO trả lời` / `Agent tự chốt` là câu trả lời) và `notes` nếu có. `business-prepare-feature` phase reconcile + validate trên spec + câu trả lời → `clarified/spec-v<N>.md` và `brief/`. Câu trả lời đẻ ra chỗ mơ hồ mới → `spec-clear` chế độ thêm câu (giữ câu cũ, số tiếp theo) và **không** viết spec mới | có spec đã làm rõ mới, hoặc có câu hỏi mới |
+| `clarify` | Đọc `questions.md` (dòng `PO chọn` / `PO trả lời` / `Agent tự chốt` là câu trả lời) và `notes` nếu có. `business-prepare-feature` phase reconcile + validate trên spec + câu trả lời → `clarified/spec-v<N>.md` và `brief/`. Câu trong `skipped` không phải câu mới: không hỏi lại, không ghi dòng trả lời, viết spec theo **Đề xuất** của câu đó và liệt kê hết trong mục `## Tạm theo đề xuất, PO chưa chốt` của spec, mỗi câu một dòng `- Q<n> → <nhãn>: <lựa chọn>`; trong `brief/` đó là `assumptions[]` (ghi `Q<n>`), không phải blocker, không lý do để ghi `blocked.json`. Câu trả lời đẻ ra chỗ mơ hồ mới → `spec-clear` chế độ thêm câu (giữ câu cũ, số tiếp theo) và **không** viết spec mới | có spec đã làm rõ mới, hoặc có câu hỏi mới |
 | `build` | Đọc mọi `rework-<N>.md` trước. `coding-orchestrator` với brief ở `.harness-run/brief/`; mode chỉ `single` hoặc `team` (không `parallel-features`). Commit trên nhánh cục bộ, ghi `progress.json` trong lúc làm và `result.json` khi xong | có `result.json` |
 
 Bỏ khi không người: stage PM, Designer, Release Gate của `/feature`; `harness-init` (overlay do service đặt sẵn).

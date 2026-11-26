@@ -81,6 +81,8 @@ pbpaste > ~/.dev-zone/secrets/ABC1.discord-webhook
 
 Mỗi project một file `~/.dev-zone/projects/<KEY>.yaml`. Mẫu: `projects/example.yaml.sample`. KEY viết hoa, ví dụ `ABC1`. File lỗi bị bỏ qua và báo trong `dz status`.
 
+`knowledge` (tuỳ chọn, tối đa 10 link Confluence): trang KB của project, ví dụ catalog feature của SDK. Mỗi spec, service đọc các trang này cùng các trang Confluence mà spec link tới (cùng host, tối đa 10, một cấp) vào `.harness-run/inputs/kb/` và `inputs/linked/` cho worker đọc như một phần của spec. Trang không đọc được không chặn spec, chỉ được ghi lại.
+
 ## Lệnh dz
 
 | Lệnh | Việc |
@@ -128,7 +130,7 @@ Chỉ một `dz run` chạy một lúc; lần thứ hai thoát với lỗi nêu 
 
 ## Sửa rule
 
-Rule mặc định ở `service/rules/default.yaml` (slot, nhịp nhắc người, ngưỡng đĩa, ngưỡng quota...). Dịch vụ đọc lại file ở mỗi nhịp (10 giây), không cần khởi động lại; file sai thì bản đúng gần nhất được giữ và `dz status` báo lỗi. Giờ làm việc (9–18h, thứ Hai đến thứ Sáu, giờ Việt Nam) nằm trong code, không sửa được bằng rule.
+Rule mặc định ở `service/rules/default.yaml` (slot, nhịp nhắc người, ngưỡng đĩa, ngưỡng quota...). Dịch vụ đọc lại file ở mỗi nhịp (10 giây), không cần khởi động lại; file sai thì bản đúng gần nhất được giữ và `dz status` báo lỗi. Giờ làm việc (9–18h, thứ Hai đến thứ Sáu, giờ Việt Nam) nằm trong code, không sửa được bằng rule. Việc chờ PO (quiz, duyệt, thử bản cài) được báo ngay khi mở, kể cả ngoài giờ, kèm link và tag PO; các lần nhắc sau theo `P01` và giờ làm việc. Chờ của QA và dev chỉ nhắc trong giờ làm việc.
 
 Mỗi quyết định ghi kèm số phiên bản rule. Dùng `DZ_RULES_DIR` để trỏ sang thư mục rule khác.
 

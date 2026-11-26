@@ -5,6 +5,7 @@ const { hashText } = require('../text-hash.cjs');
 const { figmaReadConfig } = require('./figma-config.cjs');
 const { fresh } = require('./segment.cjs');
 const { notesOf } = require('./refresh.cjs');
+const { gatherReferences, writeReferences } = require('./references.cjs');
 const { move, patch, park, needInput, decide } = require('./kit.cjs');
 const { openWait } = require('../pings.cjs');
 const { firstLine } = require('../redact.cjs');
@@ -80,9 +81,13 @@ async function read(run) {
   }
   const previous = notesOf(spec);
   for (const [name, text] of Object.entries(previous.files)) files.write(repo, path.join('inputs', name), text);
+  const knowledge = run.project.knowledge ?? [];
+  const sourceRef = source?.type === 'url' ? source.ref : null;
+  const gathered = knowledge.length || sourceRef ? await gatherReferences({ confluence: ctx.specs.confluence(run.project), knowledge, sourceRef, markdown }) : { pages: [], missing: [] };
+  const references = writeReferences(repo, gathered);
   move(run, 'asking', {
     title: spec.title || info.title || title || '',
-    data: { repo, app: info.app ?? run.project.key, figmaUrl: figma.url, rawSha: hashText(markdown), v1Sha: hashText(markdown), notes: previous.notes, readFailures: 0, readAt: 0, reviewFloor: 1, ...fresh(spec, 'ask') },
+    data: { repo, references, referencesMissing: gathered.missing.map(({ kind, ref, reason }) => ({ kind, ref, reason })), app: info.app ?? run.project.key, figmaUrl: figma.url, rawSha: hashText(markdown), v1Sha: hashText(markdown), notes: previous.notes, readFailures: 0, readAt: 0, reviewFloor: 1, ...fresh(spec, 'ask') },
   });
   return true;
 }
