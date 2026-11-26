@@ -1,7 +1,6 @@
 const store = require('../specs/store.cjs');
 const bugsStore = require('../bugs/store.cjs');
 const jobs = require('../jobs.cjs');
-const { progressOf } = require('../specs/build-result.cjs');
 const { loadProjects } = require('../projects.cjs');
 const { loadQuota } = require('../quota.cjs');
 const { intakeState } = require('../intake-state.cjs');
@@ -10,10 +9,9 @@ const { capacity, isCommandKind } = require('../slots.cjs');
 const { SPEC_LABELS } = require('../web/spec-labels.cjs');
 const { activityOf } = require('./activity.cjs');
 const { bugBoard } = require('./bug-groups.cjs');
+const { productsOf } = require('./spec-products.cjs');
 
-const RECENT_MS = 7 * 24 * 60 * 60 * 1000;
-const FINISHED = ['done', 'landed-dry'];
-const BUILT = new Set(['building', 'smoking', 'uidiff', 'reviewing', 'candidate', 'po-trial', 'landing']);
+const INACTIVE = ['done', 'landed-dry', 'cancelled'];
 const ROLES = { po: 'PO', qa: 'QA', dev: 'dev' };
 
 function waitingRoles(db) {
@@ -26,20 +24,10 @@ function waitingRoles(db) {
   return roles;
 }
 
-function progress(spec) {
-  if (!BUILT.has(spec.state) || typeof spec.data?.repo !== 'string') return null;
-  try {
-    const found = progressOf(spec.data.repo);
-    return found.total ? found : null;
-  } catch {
-    return null;
-  }
-}
-
 function specsOf(db, project, roles, now) {
   return store.listSpecs(db, { project })
-    .filter(spec => spec.state !== 'cancelled' && (!FINISHED.includes(spec.state) || now - spec.updatedAt <= RECENT_MS))
-    .map(spec => ({ id: spec.id, title: spec.title, state: spec.state, label: SPEC_LABELS[spec.state] ?? spec.state, waitingFor: roles.get(spec.id) ?? null, progress: progress(spec) }));
+    .filter(spec => !INACTIVE.includes(spec.state))
+    .map(spec => ({ id: spec.id, title: spec.title, state: spec.state, label: SPEC_LABELS[spec.state] ?? spec.state, waitingFor: roles.get(spec.id) ?? null, products: productsOf(spec, now) }));
 }
 
 function slotsOf(ctx, now) {

@@ -45,4 +45,4 @@ function bugBoard(db, project, now) {
   }));
 }
 
-module.exports = { bugBoard, syncLine };
+module.exports = { bugBoard, syncLine, timeOf };

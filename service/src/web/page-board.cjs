@@ -8,26 +8,26 @@ const COLUMNS = [['approved', 'Spec duyệt'], ['coded', 'Code xong'], ['trial',
 const safe = value => esc(redact(String(value ?? '')));
 const meta = parts => parts.filter(Boolean).join(' · ');
 
-function row(title, details, badge = '') {
-  return `<li class="row"><div><p class="row-title">${title}</p>${details ? `<p class="meta">${details}</p>` : ''}</div>${badge}</li>`;
+function row(title, lines, badge = '') {
+  return `<li class="row"><div><p class="row-title">${title}</p>${lines.filter(Boolean).map(line => `<p class="meta">${line}</p>`).join('')}</div>${badge}</li>`;
 }
 
 const rows = (items, empty) => (items.length ? `<ul class="rows">${items.join('')}</ul>` : `<p class="empty">${empty}</p>`);
 
 const specRow = spec => row(
   safe(spec.title),
-  meta([spec.waitingFor && `chờ ${safe(spec.waitingFor)}`, spec.progress && `${spec.progress.done}/${spec.progress.total} plan`]),
+  [spec.waitingFor && `chờ ${safe(spec.waitingFor)}`, ...spec.products.map(safe)],
   tag(WAITING.has(spec.state) ? 'wait' : 'plain', spec.label),
 );
 
-const bugRow = bug => row(`${safe(bug.key)} ${safe(bug.summary)}`, meta([safe(bug.priority), bug.assignee && safe(bug.assignee)]), bug.loop ? tag('plain', 'bug loop') : '');
+const bugRow = bug => row(`${safe(bug.key)} ${safe(bug.summary)}`, [meta([safe(bug.priority), bug.assignee && safe(bug.assignee)])], bug.loop ? tag('plain', 'bug loop') : '');
 
 function versionBlock(item) {
   const groups = item.groups.map(group => `<h4>${safe(group.status)} <span class="count">${group.bugs.length}</span></h4>${rows(group.bugs.map(bugRow), '')}`).join('');
   return `<h3>Bug bản ${safe(item.version)}</h3><p class="meta">${safe(item.sync)}</p>${groups || '<p class="empty">Chưa có bug nào.</p>'}`;
 }
 
-const batchRow = batch => row(`Đợt #${safe(batch.id)} bản ${safe(batch.version)}`, meta([safe(batch.phase), batch.keys.map(safe).join(', ')]), tag('plain', BATCHES[batch.state] ?? batch.state));
+const batchRow = batch => row(`Đợt #${safe(batch.id)} bản ${safe(batch.version)}`, [meta([safe(batch.phase), batch.keys.map(safe).join(', ')])], tag('plain', BATCHES[batch.state] ?? batch.state));
 
 function activityTable(days) {
   const head = `<tr><th scope="col">Ngày</th>${COLUMNS.map(([, name]) => `<th scope="col">${name}</th>`).join('')}</tr>`;
@@ -38,7 +38,7 @@ function activityTable(days) {
 function projectBlock(project) {
   const id = `p-${esc(project.key)}`;
   return `<section class="panel" aria-labelledby="${id}"><h2 id="${id}">${safe(project.key)}</h2>
-<h3>Spec</h3>${rows(project.specs.map(specRow), 'Không có spec nào đang làm.')}
+<h3>Spec</h3>${rows(project.specs.map(specRow), 'Không có spec nào đang active.')}
 ${project.bugs.map(versionBlock).join('')}
 <h3>Đợt sửa lỗi</h3>${rows(project.batches.map(batchRow), 'Không có đợt nào đang mở.')}
 <h3>7 ngày qua</h3>${activityTable(project.activity)}

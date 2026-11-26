@@ -63,12 +63,38 @@ test('the board shows each spec step and who it waits for', t => {
   s.wait(s.spec('ABC1', 'Màn path', 'quiz'), 'ABC1', 'po', 'http://x/quiz/abc');
   s.wait(s.spec('ABC1', 'Màn quiz', 'review'), 'ABC1', 'po');
   s.wait(s.spec('ABC1', 'Màn hồ sơ', 'parked'), 'ABC1', 'dev');
-  s.spec('ABC1', 'Xong lâu rồi', 'done', {}, NOW - 8 * DAY);
   s.spec('ABC1', 'Đã xong', 'done', {}, NOW - DAY);
+  s.spec('ABC1', 'Đã gộp khô', 'landed-dry', {}, NOW - DAY);
   s.spec('ABC1', 'Bỏ', 'cancelled');
   assert.deepEqual(s.of('ABC1').specs.map(item => [item.title, item.state, item.label, item.waitingFor]), [
-    ['Màn path', 'quiz', 'Chờ PO trả lời', 'PO'], ['Màn quiz', 'review', 'Chờ PO duyệt', 'PO'], ['Màn hồ sơ', 'parked', 'Tạm gác', 'dev'], ['Đã xong', 'done', 'Xong', null],
+    ['Màn path', 'quiz', 'Chờ PO trả lời', 'PO'], ['Màn quiz', 'review', 'Chờ PO duyệt', 'PO'], ['Màn hồ sơ', 'parked', 'Tạm gác', 'dev'],
   ]);
+});
+
+test('each active spec lists only the products of the steps it went through', async t => {
+  const s = world(t);
+  const questions = [{ id: 'Q1', mode: 'ask' }, { id: 'Q2', mode: 'ask' }, { id: 'Q3', mode: 'auto' }];
+  const answered = { Q1: { kind: 'po' }, Q3: { kind: 'agent' } };
+  const references = [{ kind: 'kb' }, { kind: 'linked' }];
+  s.spec('ABC1', 'Mới nhận', 'reading');
+  s.spec('ABC1', 'Đang hỏi', 'quiz', { questions, answered });
+  s.spec('ABC1', 'Chờ duyệt', 'review', { questions, answered, references, reviewVersion: 2 });
+  s.spec('ABC1', 'Đã duyệt', 'approved', { questions, answered, reviewVersion: 1, approvedAt: at('2026-11-25T19:02:00') });
+  s.spec('ABC1', 'Đang thử', 'po-trial', {
+    reviewVersion: 1, approvedAt: at('2026-11-24T09:30:00'), repo: s.repo([{ status: 'done' }, { status: 'done' }]),
+    build: { version: '1.9.2', candidate: { sha: 'a'.repeat(40), n: 2 }, trial: { at: at('2026-11-25T18:40:00') } },
+  });
+  assert.deepEqual(s.of('ABC1').specs.map(item => [item.title, item.products]), [
+    ['Mới nhận', []],
+    ['Đang hỏi', ['3 câu hỏi: 1/2 câu PO đã trả lời, 1 câu agent tự chốt']],
+    ['Chờ duyệt', ['3 câu hỏi: 1/2 câu PO đã trả lời, 1 câu agent tự chốt', '2 tài liệu tham chiếu', 'Spec làm rõ v2 chờ PO duyệt']],
+    ['Đã duyệt', ['3 câu hỏi: 1/2 câu PO đã trả lời, 1 câu agent tự chốt', 'Spec làm rõ v1 PO duyệt lúc 19:02']],
+    ['Đang thử', ['Spec làm rõ v1 PO duyệt lúc 09:30 ngày 24/11', 'Code cho bản 1.9.2: 2/2 plan xong', 'Bản cài #2 gửi PO lúc 18:40']],
+  ]);
+  const { token } = tokens.issueViewer(s.db, { keys: [] }, NOW);
+  const text = (await (await serve(t, s)).get(`/board/${token}`)).text;
+  assert.match(text, /Spec làm rõ v1 PO duyệt lúc 19:02/);
+  assert.match(text, /Bản cài #2 gửi PO lúc 18:40/);
 });
 
 test('a building spec shows done over total plans from progress.json', async t => {
@@ -76,9 +102,9 @@ test('a building spec shows done over total plans from progress.json', async t =
   s.spec('ABC1', 'Màn A', 'building', { repo: s.repo([{ id: '01', status: 'done' }, { id: '02', status: 'running' }, { id: '03' }]) });
   s.spec('ABC1', 'Màn B', 'quiz', { repo: s.repo([{ status: 'done' }]) });
   s.spec('ABC1', 'Màn C', 'building', { repo: path.join(s.h.root, 'missing') });
-  assert.deepEqual(s.of('ABC1').specs.map(item => item.progress), [{ done: 1, total: 3 }, null, null]);
+  assert.deepEqual(s.of('ABC1').specs.map(item => item.products), [['Code: 1/3 plan xong'], [], []]);
   const { token } = tokens.issueViewer(s.db, { keys: [] }, NOW);
-  assert.match((await (await serve(t, s)).get(`/board/${token}`)).text, /1\/3 plan/);
+  assert.match((await (await serve(t, s)).get(`/board/${token}`)).text, /Code: 1\/3 plan xong/);
 });
 
 test('bugs are grouped by Jira status, sorted by priority, and loop bugs are marked', t => {
