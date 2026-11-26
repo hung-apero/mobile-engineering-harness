@@ -11,3 +11,6 @@ dd { font-weight: 600; }
 .row .tag { margin-top: 3px; flex: none; }
 .row-title { font-weight: 600; }
 .empty { color: var(--soft); }
+.panel h3, .panel h4 { margin-top: 14px; margin-bottom: 4px; }
+.activity { display: block; overflow-x: auto; border-collapse: collapse; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.activity th, .activity td { padding: 4px 10px; text-align: left; border-bottom: 1px solid var(--line); }

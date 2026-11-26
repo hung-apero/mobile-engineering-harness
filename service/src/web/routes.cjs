@@ -10,6 +10,8 @@ const { reviewPage } = require('./page-review.cjs');
 const { releasePage } = require('./page-release.cjs');
 const { newAppPage } = require('./page-newapp.cjs');
 const { loadRelease } = require('./release-load.cjs');
+const { boardPage } = require('./page-board.cjs');
+const { boardModel } = require('../board/model.cjs');
 
 const GET = ['GET', 'HEAD'];
 const POST = ['POST'];
@@ -39,6 +41,7 @@ const ROUTES = [
   view('review', 'review', /^\/review\/([\w-]{1,200})$/, async ({ facade, specId }) => reviewPage(await facade.review(specId))),
   tokenCall('review', 'approve', review.approve),
   tokenCall('review', 'feedback', review.feedback),
+  view('board', 'viewer', /^\/board\/([\w-]{1,200})$/, ({ ctx, viewer, now }) => boardPage(boardModel(ctx, viewer, now), now)),
 ];
 
 function findRoute(pathname, search) {

@@ -9,6 +9,7 @@ const { loadStatic } = require('./static-files.cjs');
 const { findRoute } = require('./routes.cjs');
 const { messagePage } = require('./html.cjs');
 const { WebError, toWebError } = require('./web-error.cjs');
+const { resolveViewer } = require('../board/tokens.cjs');
 
 const DEFAULT_PORT = 8787;
 
@@ -42,6 +43,11 @@ function createWeb(ctx, { facade, host, port, now = Date.now, resolveToken = def
 
   function authorize(req, res, route, token, query) {
     const address = req.socket.remoteAddress ?? '';
+    if (route.auth === 'viewer') {
+      const viewer = tokens.check(address, token, value => resolveViewer(ctx.db, value, now()));
+      if (viewer === null) throw new WebError(404, 'NOT_FOUND');
+      return { viewer };
+    }
     if (route.auth !== 'operator') {
       const specId = tokens.check(address, token, value => resolveToken(ctx.db, value, route.auth, now()));
       if (specId === null) throw new WebError(404, 'NOT_FOUND');
@@ -67,7 +73,7 @@ function createWeb(ctx, { facade, host, port, now = Date.now, resolveToken = def
     const auth = authorize(req, res, route, token, query);
     if (auth.login) return html(res, 200, messagePage('Đã mở khoá', 'Đang vào trang trạng thái…', { refresh: '/' }));
     const body = req.method === 'POST' ? await readJson(req, res) : null;
-    const result = await route.run({ ctx, facade, specId: auth.specId, body, token, params, query, now: now() });
+    const result = await route.run({ ctx, facade, specId: auth.specId, viewer: auth.viewer, body, token, params, query, now: now() });
     return route.api ? json(res, 200, { ok: true, ...result }) : html(res, 200, result);
   }
 

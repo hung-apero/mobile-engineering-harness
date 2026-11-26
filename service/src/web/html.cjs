@@ -7,7 +7,7 @@ const AGENT_TAG = tag('agent', 'Agent tự chốt');
 
 const clock = ms => (Number.isFinite(ms) ? new Date(ms).toLocaleString('vi-VN', { timeZone: 'Asia/Saigon', dateStyle: 'short', timeStyle: 'short' }) : '');
 
-function page({ title, style, script, body, refresh = '' }) {
+function page({ title, style, script, body, refresh = '', reload = 0 }) {
   return `<!doctype html>
 <html lang="vi">
 <head>
@@ -15,7 +15,7 @@ function page({ title, style, script, body, refresh = '' }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex">
-${refresh ? `<meta http-equiv="refresh" content="0;url=${esc(refresh)}">\n` : ''}<title>${esc(title)}</title>
+${refresh ? `<meta http-equiv="refresh" content="0;url=${esc(refresh)}">\n` : ''}${reload ? `<meta http-equiv="refresh" content="${Number(reload)}">\n` : ''}<title>${esc(title)}</title>
 <link rel="stylesheet" href="/static/base.css">
 ${style ? `<link rel="stylesheet" href="/static/${style}.css">\n` : ''}${script ? `<script type="module" src="/static/${script}.js"></script>\n` : ''}</head>
 <body>
