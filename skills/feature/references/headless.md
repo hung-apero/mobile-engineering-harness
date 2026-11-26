@@ -7,7 +7,7 @@ làm đúng **một đoạn** rồi thoát. File này ưu tiên hơn `single.md`
 
 | Đường dẫn | Ai ghi | Nội dung |
 |---|---|---|
-| `inputs/headless.json` | service | `{ spec, figma: {url}\|null, app, case: existing\|new, segment: ask\|clarify\|build, notes?, rework?[] }` |
+| `inputs/headless.json` | service | `{ spec, figma: {url}\|null, app, case: existing\|new, segment: ask\|clarify\|build, notes?, rework?[], references?[] }` — `references`: `[{ kind: kb\|linked, file, title }]`, file trong `inputs/kb/`, `inputs/linked/` (KB của project, trang Confluence spec link tới); đọc như một phần của spec |
 | `inputs/spec-v1.md`, `inputs/notes-<N>.md`, `inputs/rework-<N>.md`, `inputs/approval.json` | service | spec gốc, góp ý PO, yêu cầu sửa, lời duyệt |
 | `questions.md`, `triage.json` | bạn (service ghi câu trả lời vào `questions.md`) | câu hỏi cho PO và phân loại |
 | `scout.md`, `figma/` | bạn | bản đồ app, digest Figma |

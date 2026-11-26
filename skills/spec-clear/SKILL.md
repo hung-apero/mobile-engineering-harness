@@ -21,6 +21,8 @@ Khi biến này bằng `1` (service gọi qua `feature` đoạn `ask`/`clarify`)
 - **Bước 2:** danh sách frame ghi `.harness-run/figma.json`, ảnh vào `.harness-run/figma-images/`. Tool Figma lỗi → `blocked.json`,
   không hỏi có chạy tiếp không. Khối inputs ở bước 3 ghi `Spec: <cwd>/.harness-run/<spec>` và
   `Figma: <cwd>/.harness-run/figma.json + figma-images/`, kèm dòng `Ảnh Figma ở figma-images/ thay cho inputs/figma/`.
+- **References:** `headless.json` có `references` (`[{ kind: kb|linked, file, title }]`) → thêm vào khối inputs ở bước 3
+  và bước 4 dòng `References: <cwd>/.harness-run/<file> (<title>), …`. Không có thì `References: none`.
 - **Bước 3–4:** agent trả `NEEDS_CONTEXT` hai lần → `blocked.json`. Agent viết câu hỏi nhận thêm dòng `Headless: yes` và ghi cả
   `.harness-run/triage.json` (xem `references/question-rules.md` §Headless).
 - **Bước 5:** không báo dev; chạy `python3 .claude/skills/feature/scripts/headless_check.py <segment> .` (`segment` lấy từ

@@ -8,6 +8,10 @@ trong code giữ nguyên.
 
 - `Spec:` spec của PO
 - `App root:` và `Case:` `existing` | `new` (`new` hoặc `App root: none` → không có code để đọc)
+- `References:` (tuỳ chọn) — trang KB của project và trang Confluence spec link tới (spec SDK, catalog feature…).
+  Đọc hết trước khi đọc code; coi như một phần của spec. Điều spec để "theo SDK / xem trang khác" mà References trả
+  lời được thì ghi vào phân tích kèm nguồn (tên trang), không ghi thành chỗ mơ hồ. Trang spec link tới mà không có
+  trong References (service không đọc được) → ghi rõ `chưa đọc được: <link>`.
 
 ## Đọc
 

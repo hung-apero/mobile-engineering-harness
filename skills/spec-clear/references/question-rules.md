@@ -6,6 +6,8 @@ viết theo ngôn ngữ của spec, lời thường, không có từ ngữ code 
 ## Inputs (trong prompt)
 
 - `Spec:`, `Scout:` (`scout.md`), `UI nodes:` (`figma/*.json` hoặc none), ảnh `inputs/figma/`
+- `References:` (tuỳ chọn) — KB của project và trang Confluence spec link tới. Không hỏi điều References đã trả lời
+  (vd version SDK đã có, màn nào SDK vẽ sẵn); câu tự chốt dựa trên References ghi `source` là tên trang.
 - `App root:`, `Case:` `existing` | `new`
 - `Feedback:` (chỉ khi gọi lại) — chỗ sai của lần trước, sửa đúng chỗ đó
 

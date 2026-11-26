@@ -81,6 +81,8 @@ pbpaste > ~/.dev-zone/secrets/ABC1.discord-webhook
 
 Mỗi project một file `~/.dev-zone/projects/<KEY>.yaml`. Mẫu: `projects/example.yaml.sample`. KEY viết hoa, ví dụ `ABC1`. File lỗi bị bỏ qua và báo trong `dz status`.
 
+`knowledge` (tuỳ chọn, tối đa 10 link Confluence): trang KB của project, ví dụ catalog feature của SDK. Mỗi spec, service đọc các trang này cùng các trang Confluence mà spec link tới (cùng host, tối đa 10, một cấp) vào `.harness-run/inputs/kb/` và `inputs/linked/` cho worker đọc như một phần của spec. Trang không đọc được không chặn spec, chỉ được ghi lại.
+
 ## Lệnh dz
 
 | Lệnh | Việc |

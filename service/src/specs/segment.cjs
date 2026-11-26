@@ -21,10 +21,10 @@ const keyOf = spec => `${spec.id}#${spec.data.segment.name}-${spec.data.segment.
 const jobOf = run => findJob(run.db, { project: run.project.key, kind: 'spec', key: keyOf(run.spec) });
 
 function writeConfig(run) {
-  const { repo, app, figmaUrl, segment, notes } = run.spec.data;
+  const { repo, app, figmaUrl, segment, notes, references = [] } = run.spec.data;
   const rework = reworkOf(run.spec).map(item => item.file);
   writeRework(run);
-  const config = { spec: 'inputs/spec-v1.md', figma: figmaUrl ? { url: figmaUrl } : null, app, case: 'existing', segment: LEARN_SEGMENTS[segment.name] ?? segment.name, ...(notes && { notes }), ...(rework.length && { rework }) };
+  const config = { spec: 'inputs/spec-v1.md', figma: figmaUrl ? { url: figmaUrl } : null, app, case: 'existing', segment: LEARN_SEGMENTS[segment.name] ?? segment.name, ...(notes && { notes }), ...(rework.length && { rework }), ...(references.length && { references }) };
   files.write(repo, 'inputs/headless.json', `${JSON.stringify(config, null, 1)}\n`);
   files.remove(repo, 'blocked.json');
   files.remove(repo, 'headless-blocked.json');

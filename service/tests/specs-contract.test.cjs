@@ -175,3 +175,17 @@ test('an overlay the service built is recorded and the dev is asked to look at i
   assert.equal(wait.role, 'dev');
   assert.match(wait.subject, /ABC1\.overlay\.yaml/);
 });
+
+test('kb pages of the project and confluence pages linked from the spec reach the worker as references', async t => {
+  const s = setup(t, { source: { type: 'url', ref: 'https://wiki.example/pages/viewpage.action?pageId=9' } });
+  s.h.project('ABC1', { knowledge: ['https://wiki.example/pages/viewpage.action?pageId=50'] });
+  const bodies = { 9: '# [ABC1] Spec\nSDK https://wiki.example/pages/viewpage.action?pageId=70\n', 50: '# Catalog\nCLP 1.0.0-alpha05', 70: '# SDK CLP\nmàn chặng' };
+  s.ctx.specs.confluence = () => ({ page: async ref => { const id = String(ref).match(/pageId=(\d+)/)[1]; return { id, title: `T${id}`, markdown: bodies[id], version: 1, url: '' }; } });
+  await s.until(() => s.running().length === 1);
+  const { references } = JSON.parse(s.read('inputs/headless.json'));
+  assert.deepEqual(references.map(r => [r.kind, r.file]), [['kb', 'inputs/kb/50.md'], ['linked', 'inputs/linked/70.md']]);
+  assert.match(s.read('inputs/kb/50.md'), /1\.0\.0-alpha05/);
+  assert.match(s.read('inputs/linked/70.md'), /màn chặng/);
+  await s.finish(repo => asked(repo));
+  assert.equal(s.spec().state, 'quiz');
+});
