@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 
@@ -12,6 +13,8 @@ import headless_check as hc
 
 FIXTURE = (Path(__file__).resolve().parent / "fixtures" / "spec-clear-questions.md").read_text(encoding="utf-8")
 SCRIPT = Path(__file__).resolve().parent / "headless_check.py"
+RULES = Path(__file__).resolve().parents[2] / "spec-clear" / "references" / "question-rules.md"
+BACKEND = textwrap.dedent(RULES.read_text(encoding="utf-8").split("```\n")[1]).replace("<n>", "1").replace("<…>", "Lộ trình").replace("<vì sao>", "BE có ngày xong") if RULES.exists() else ""
 
 
 def ask_items(**overrides):
@@ -134,6 +137,17 @@ class HeadlessCheckTest(unittest.TestCase):
         self.run.write("questions.md", "Không có câu hỏi\n")
         self.run.write("progress.json", {"plans": [{"id": "p1", "title": "Màn lộ trình", "status": "merged"}]})
         self.assertTrue(any("progress.json" in p and "p1" in p for p in self.problems("ask")))
+
+    def test_spec_clear_backend_example_passes(self):
+        self.run.write("questions.md", BACKEND)
+        self.run.write("triage.json", {"items": [{"id": "Q1", "decision": "ask", "category": "sample-data", "reason": "chỉ PO chọn dữ liệu mẫu"}]})
+        self.assertEqual(self.problems("ask"), [])
+
+    def test_spec_clear_backend_auto_c_rejected(self):
+        self.run.write("questions.md", BACKEND)
+        auto = {"id": "Q1", "decision": "auto", "category": "sample-data", "label": "C", "source": "scout.md Backend", "reason": "x"}
+        self.run.write("triage.json", {"items": [auto]})
+        self.assertTrue(any("Q1" in p and "sample-data" in p for p in self.problems("ask")))
 
     def test_cli_exit_codes(self):
         self.run.write("questions.md", FIXTURE)
