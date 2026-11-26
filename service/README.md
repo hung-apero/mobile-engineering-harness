@@ -7,7 +7,7 @@ Dịch vụ Node chạy 24/7 trên Mac mini: nhận việc, giao cho worker Clau
 1. Cài: làm theo mục "Cài" bên dưới, rồi `dz doctor` cho tới khi không còn dòng THIẾU. Đăng nhập Claude riêng và `gh auth login`.
 2. Bật một project: đặt `~/.dev-zone/projects/<KEY>.yaml` với `enabled: true`, `live: false` (chạy khô: chỉ ghi `would`, không gửi gì ra ngoài). Chạy thử vài ngày rồi làm theo "Từ chạy khô sang live".
 3. Gửi spec: `dz spec <link Confluence> --project <KEY>`, hoặc mở `dz web` rồi bấm "Gửi spec mới", hoặc nhắn vào kênh Discord của project (cần bàn điều phối, xem bước 6).
-4. Quiz: PO nhận link ở Discord (tối đa 90 ngày), chọn đáp án rồi bấm nộp; hỏi thêm ngay trên trang. Spec viết lại xong, PO nhận link duyệt và duyệt đúng bản đó. Muốn bắt đầu code: `dz spec build <id> --version <v>`.
+4. Quiz: PO nhận link ở Discord (tối đa 90 ngày), chọn đáp án rồi bấm nộp; hỏi thêm ngay trên trang. Spec viết lại xong, PO nhận link duyệt và duyệt đúng bản đó. PO duyệt xong dịch vụ tự bắt đầu code cho bản minor kế tiếp của app; chọn bản khác bằng `dz spec build <id> --version <v>` khi dịch vụ gọi dev.
 5. Bug: `dz bugs on <KEY> <version>` rồi để dịch vụ quét Jira. Xem bản ở `/release/<KEY>/<version>` trên trang web: 6 điều kiện, bug Medium/Low có thể hoãn (ghi tên người hoãn). Xong bản: `dz release done <KEY> <version>` (hoặc `cancel`); E2E của QA: `dz release e2e <KEY> <version> accept|continue --by <tên>`. E2E cần `~/.dev-zone/android-test-harness`, `maestro` trong PATH và `~/.dev-zone/e2e/<KEY>.json` (`dz doctor` báo thiếu).
 6. Bot Discord: `dz desk setup` in từng bước (tạo bot, Message Content Intent, cất token vào `secrets/discord-bot-token`, khai `channel` trong project, đăng nhập và cài plugin). Xong thì `dz doctor`, `dz desk start`, xem bằng `dz desk status`; tắt bằng `dz desk stop`. Chỉ người khai trong `people` của project nhắn được cho bàn điều phối.
 7. App mới: `dz newapp start <KEY> --name … --package … --application-id … --repo owner/tên --firebase-project … --tester-group … --jira-project … --discord-channel … --po … --qa … --dev …` in danh sách dev cần cung cấp; hoặc mở `/app/new` trên trang web để điền giá trị và bấm kiểm. File bí mật (`google-services.json`, keystore…) chép tay vào `~/.dev-zone/secrets/newapp/<KEY>/` quyền 600, trang web không nhận chúng. `dz newapp check <KEY>` tới khi đủ mục bắt buộc, rồi `dz newapp create <KEY>` ghi `projects/<KEY>.yaml` với `enabled: false`; dev tự bật sau khi xem lại. Cần `~/.dev-zone/harness` là bản checkout của harness (commit ghim lấy từ đó).
@@ -104,7 +104,7 @@ Mỗi project một file `~/.dev-zone/projects/<KEY>.yaml`. Mẫu: `projects/exa
 | `dz spec list [KEY]` / `dz spec show <id>` | xem các spec / một spec |
 | `dz spec link <id>` | tạo link mới cho PO (quiz hoặc duyệt), hết hạn sau 90 ngày |
 | `dz spec refresh <id>` | đọc lại nguồn; đổi thì làm lại trong bản clone mới kèm câu trả lời cũ, lời duyệt cũ hết hiệu lực; spec đang code thì chỉ phần đổi phải duyệt lại |
-| `dz spec build <id> --version <v>` | bắt đầu code spec đã duyệt cho bản `<v>`; không chạy lệnh này thì spec ở nguyên `approved` |
+| `dz spec build <id> --version <v>` | bắt đầu code spec đã duyệt cho bản `<v>`; bình thường không cần: PO duyệt xong dịch vụ tự code cho bản minor kế tiếp của app (`versionName` trong `app/build.gradle(.kts)` của nhánh gốc, 1.9.2 → 1.10.0, bỏ qua bản đã đóng); không đọc được version thì gọi dev và chờ lệnh này |
 | `dz spec prereq <id> [--pr [owner/repo#]N] [--branch owner/repo:nhánh] [--clear]` | đặt điều kiện trước (PR đã merge, nhánh đã có); không cờ thì xem điều kiện và gợi ý đọc từ spec (gợi ý không tự áp dụng) |
 | `dz spec retry <id> [--figma URL\|none]` | chạy lại spec đang gác hoặc cần bổ sung |
 | `dz spec cancel <id>` | huỷ spec: đóng mọi chờ, gác việc đang chạy của spec, máy bỏ qua spec này (mã `OP01`); gọi lại không ghi thêm |
@@ -198,7 +198,7 @@ Mỗi nhịp, bước bug chạy nền (không chặn giám sát worker): quét 
 
 ### Code tính năng
 
-`approved → waiting-prereq → building → smoking → uidiff → reviewing → candidate → po-trial → landing → done`, bắt đầu bằng `dz spec build <id> --version <bản>`. Chạy khô thì kết thúc ở `landed-dry`; `dz bugs reset-dry` đưa spec đó về `po-trial`. `needs-input` và `parked` rẽ ra từ mọi bước; `dz spec retry` quay lại đúng bước đó. `dz spec cancel` đưa spec về `cancelled` từ bất kỳ bước nào, không quay lại được.
+`approved → waiting-prereq → building → smoking → uidiff → reviewing → candidate → po-trial → landing → done`, tự bắt đầu sau khi PO duyệt (bản minor kế tiếp của app) hoặc bằng `dz spec build <id> --version <bản>`. Chạy khô thì kết thúc ở `landed-dry`; `dz bugs reset-dry` đưa spec đó về `po-trial`. `needs-input` và `parked` rẽ ra từ mọi bước; `dz spec retry` quay lại đúng bước đó. `dz spec cancel` đưa spec về `cancelled` từ bất kỳ bước nào, không quay lại được.
 
 - Điều kiện trước kiểm bằng `gh` chỉ đọc, 15 phút một lần; chưa đủ thì mở việc chờ dev.
 - Worker code chạy đoạn `build` (`coding-orchestrator`, mode `single`/`team`) trên nhánh `dz/spec-<id>` của bản clone, ghi `progress.json` và `result.json`; số suất được cấp nằm trong `headless.json`. Không adb, không push. Đĩa còn dưới 40 GB thì chỉ xin một suất. Xong khi `result.json` qua bộ kiểm và `commit` là đỉnh nhánh; thiếu thì chạy lại, hai lần không tiến (plan `done`) thì gác.

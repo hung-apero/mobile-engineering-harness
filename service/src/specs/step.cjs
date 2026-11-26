@@ -42,7 +42,7 @@ async function projectStep(ctx, project, now) {
   if (isPaused(ctx.db, project.key)) return;
   for (const spec of store.listSpecs(ctx.db, { project: project.key, states: STATES })) {
     if (ctx.stopping) return;
-    if (!idle(spec, project)) await oneSpec(ctx, project, spec.id, now);
+    if (!idle(spec, project, now)) await oneSpec(ctx, project, spec.id, now);
   }
 }
 

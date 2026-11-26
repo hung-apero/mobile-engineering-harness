@@ -116,7 +116,8 @@ test('a comment that keeps failing does not touch the approval and calls the dev
   await approve(s);
   for (let i = 0; i < 6; i++) await s.tick(16 * 60000);
   assert.equal(s.spec().state, 'approved');
-  assert.deepEqual(s.waits().map(w => w.role), ['dev']);
+  assert.ok(s.waits().every(w => w.role === 'dev'));
+  assert.equal(s.waits().filter(w => /comment Confluence/.test(w.subject)).length, 1);
 });
 
 test('dry run: only local commands, no Discord, no Confluence write, no push', async t => {

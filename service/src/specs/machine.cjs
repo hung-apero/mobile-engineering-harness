@@ -2,7 +2,8 @@ const jobs = require('../jobs.cjs');
 const { start, read } = require('./phase-read.cjs');
 const { advance } = require('./phase-segment.cjs');
 const { quiz } = require('./phase-quiz.cjs');
-const { review, approved, commentDone } = require('./phase-review.cjs');
+const { review, approved: comment, commentDone } = require('./phase-review.cjs');
+const { autoBuild } = require('./auto-build.cjs');
 const { waitingPrereq } = require('./prereq.cjs');
 const { advanceBuild } = require('./phase-build.cjs');
 const { smoking, smokeKey } = require('./phase-smoke.cjs');
@@ -16,6 +17,9 @@ const { askChange, applyChange } = require('./change.cjs');
 const { BUILD_STATES, idle: noJobs } = require('./build-kit.cjs');
 const { keyOf } = require('./segment.cjs');
 const { move, closeWaits, findJob } = require('./kit.cjs');
+
+const commented = (spec, live) => spec.source.type !== 'url' || commentDone(spec, live);
+const approved = async run => (await comment(run)) || (commented(run.spec, run.live) && autoBuild(run));
 
 const OWN_JOB = ['building', 'smoking', 'uidiff', 'reviewing'];
 const OPEN = ['queued', 'starting', 'running', 'done'];
@@ -35,7 +39,7 @@ const PHASES = {
 };
 const STATES = Object.keys(PHASES);
 
-const idle = (spec, project) => spec.state === 'approved' && (commentDone(spec, project.live === true) || spec.source.type !== 'url');
+const idle = (spec, project, now) => spec.state === 'approved' && (spec.data.autoBuild?.at ?? 0) > now && commented(spec, project.live === true);
 
 function unsettled({ db, project, spec }) {
   if (!OWN_JOB.includes(spec.state)) return false;

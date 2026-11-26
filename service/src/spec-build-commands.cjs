@@ -1,11 +1,11 @@
 const store = require('./specs/store.cjs');
 const bugs = require('./bugs/store.cjs');
-const { isClosed } = require('./bugs/closing.cjs');
 const { parsePrereqs, suggestionsOf, label, PrereqError } = require('./specs/prereq.cjs');
 const { sourceChange } = require('./specs/change.cjs');
 const { isBuilding } = require('./specs/build-kit.cjs');
 const { closeWaits } = require('./specs/kit.cjs');
 const { record } = require('./decisions.cjs');
+const { startBuild } = require('./specs/start-build.cjs');
 const { ruleVersionOf } = require('./bugs/effects.cjs');
 const { loadedProject } = require('./commands.cjs');
 const { ExpectedError } = require('./run.cjs');
@@ -44,11 +44,8 @@ function listLines(ctx, spec, project) {
 
 function build(ctx, spec, [, , version], now) {
   const project = loadedProject(ctx, spec.project);
-  if (spec.state !== 'approved') throw new ExpectedError(`spec #${spec.id} đang ở ${spec.state}, chỉ bắt đầu code spec đã duyệt`);
-  if (bugs.getVersion(ctx.db, spec.project, version)?.state === 'closed' || isClosed(ctx.db, spec.project, version)) throw new ExpectedError(`bản ${version} đã đóng`);
-  const next = store.transitionSpec(ctx.db, spec.id, ['approved'], 'waiting-prereq', now, { data: { build: { version, at: now, notes: {}, fixes: 0, uidiff: { round: 1 } } } });
-  if (!next) throw new ExpectedError(`spec #${spec.id} vừa chuyển trạng thái, chạy lại lệnh`);
-  note(ctx, spec, 'spec-build', { version, approvedSha: spec.approvedSha, live: project.live === true }, now);
+  const { next, problem } = startBuild(ctx, spec, version, now, { live: project.live === true });
+  if (problem) throw new ExpectedError(problem);
   return [`Spec #${spec.id} sẽ được code cho bản ${version}${project.live ? '' : ' (chạy khô: không push, không PR, không gửi bản cài)'}`, ...listLines(ctx, next, project)];
 }
 
