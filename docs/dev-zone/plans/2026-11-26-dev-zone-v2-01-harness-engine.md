@@ -275,23 +275,163 @@ ngoài `origin`. Đối chiếu từng luật trong `service/src/bugs/prompts-bu
 
 ---
 
-## Phần B — đoạn build và xoá learn-app (chi tiết hoá sau bài thử)
+## Phần B — đoạn build và xoá learn-app
 
-Mỗi task theo khuôn Phần A (test hỏng trước, chạy toàn bộ, commit). Đầu vào/đầu ra theo spec §3–§5.
+Viết chi tiết ngày 2026-11-26, trước bài thử (bài thử dừng ở spec đã duyệt nên không phụ thuộc Phần B). Mỗi task: test hỏng trước,
+chạy toàn bộ, commit. Đầu vào/đầu ra theo spec §3–§5.
+
+### Luồng sau khi duyệt (v2)
+
+```
+approved ──dz spec build──► waiting-prereq ──► building ──► smoking ──► uidiff ──► reviewing ──► candidate ──► po-trial ──► landing
+                                                 ▲   (harness)   (service:      (Figma,       (diff guard +   (cổng, build,
+                                                 │                 build + cài    agent so UI)  review độc lập) PR, gửi bản cài)
+                                                 └──── rework-<N>.md ◄── góp ý PO · reviewer · cổng/build đỏ · chạy thử đỏ · xung đột · spec đổi
+```
+
+- `building`: một `claude -p` gọi `/feature` headless đoạn `build`. Nhánh cục bộ trong bản clone là `dz/spec-<id>` (service tạo từ
+  HEAD trước lượt build đầu, worker commit trên nhánh đó, không đổi nhánh). Xong = `result.json` hợp lệ (bộ kiểm) **và**
+  `result.branch` là nhánh đó, `result.commit` là đỉnh nhánh và là HEAD. Tiến độ = số plan `done` trong `progress.json`.
+- `smoking`: không còn agent `smoke-tester`. Service mượn thiết bị (`device-lease`) rồi xếp một việc `build` (lệnh, `run-step`)
+  trên chính bản clone ở commit đó: `verify` → `assemble` → `smoke` (cài `-r` APK mới nhất theo `apkGlob`, mở app bằng launcher,
+  chờ, app phải còn chạy và không có crash của package trong `logcat -b crash`). Đỏ → yêu cầu sửa, quay lại `building`.
+- `uidiff`, `reviewing`, `candidate`, `po-trial`, `landing` giữ cơ chế cũ, bỏ mọi chỗ gọi state CLI: không `handoff --base`
+  (tiêu đề/nội dung PR service tự viết từ `brief/` + `result.json`), không `approve g3` (lời duyệt bản cài chỉ ghi quyết định ở DB).
+- Mọi yêu cầu sửa (thay `back --to coding`, `reopen --plan`, `decide`): `sendBack(run, reason, key)` → `inputs/rework-<N>.md`, chạy
+  lại `building`. Không còn khái niệm plan bị ảnh hưởng: worker tự xác định plan từ nội dung rework.
+- Bỏ trạng thái `provisional` và các quyết định tạm của learn-app (`state.features[].decisions`). Câu reviewer cần PO chốt
+  (`needsPo`) vẫn đi qua vòng quiz tạm (`prov`) như cũ; PO chọn "khác" → rework.
+
+### Review Focus (Phần B)
+
+1. Worker build commit lên nhánh khác, để HEAD lệch, hay `result.commit` không phải đỉnh nhánh → không đi tiếp, chạy lại rồi gác
+   (Task 11).
+2. `.harness-run/` không bao giờ lọt vào commit gửi đi (cây candidate dựng lại bỏ `.harness-run`, diff guard cấm) (Task 13).
+3. Việc chạy thử chỉ dùng đúng máy đang giữ khoá, mọi lệnh adb đi qua wrapper `-s <serial>`; test không chạy adb thật (Task 13).
+4. Không còn đường nào chạy `vendor/learn-app` hay state CLI; `dz spec build` mở lại chỉ khi mọi bước trên chạy được (Task 14).
 
 ### Task 11: Đoạn build qua hợp đồng
-Prompt và handler `build` gọi `/feature` headless; đọc `progress.json`/`result.json` thay `state.json`, `readPlans`, `stepIndex`
-(`phase-build`, `build-kit`). Test: build giả ghi `result.json` → spec sang bước kế; `result.json` trỏ commit không có → `short`.
+
+**Files:**
+- Create: `service/src/specs/build-result.cjs`, `service/tests/specs-build-fixtures.cjs`, `service/tests/specs-build-flow.test.cjs`
+- Modify: `service/src/specs/{prompts,phase-build,segment,wire,verify}.cjs`, `service/src/handlers/spec.cjs`
+- Test: `service/tests/handler-spec-build.test.cjs` (phần worker build)
+
+**Interfaces:**
+- Produces (`build-result.cjs`): `branchOf(spec) = 'dz/spec-<id>'`; `ensureBranch(repo, branch): Promise<void>` (`checkRepo`, có nhánh
+  thì `git switch`, chưa có thì `git switch -c` từ HEAD; bỏ qua khi HEAD đã ở đó); `progressOf(repo): { done, total }` (đọc
+  `progress.json`, hỏng → `{0,0}`); `readResult(repo): { branch, commit, plans, review: { verdict, findings: string[] } } | null`;
+  `resultProblem(run): Promise<string|null>` (nhánh đúng, `refs/heads/<branch>` = `commit` = HEAD).
+- `headless.json` của đoạn build thêm `slots` (số suất được cấp lúc xếp việc) và `branch`.
+- `prompts.specPrompt` đoạn `build`: prompt harness chung + dòng "commit trên nhánh `<branch>`, không đổi nhánh, không adb/máy ảo,
+  không push/PR" + `reworkLine` (đường dẫn `.harness-run/inputs/rework-<N>.md`). Đoạn `smoke` (agent cũ) giữ tới Task 13.
+- `handlers/spec.prepare` đoạn `build`: env `HARNESS_HEADLESS=1`, không `pluginDirs`, không `LEARN_APP_*`; giữ chặn adb, máy ảo, push.
+- `phase-build` đoạn `building` (đoạn `smoking` cũ giữ nguyên tới Task 13): `launchBuild` = `copyLocalFiles` + `ensureBranch` +
+  `segment.launch`; settle theo thứ tự: `inputsSha` khác → gác; `blocked.json` → `needInput`; `check(build)` có problems → chạy
+  lại; `resultProblem` → chạy lại; `review.verdict` không phải approve (`changes|request_changes|reject|fail`) → chạy lại; còn lại
+  → `F03 spec-coded`, `clearRework`, sang `smoking`. Chạy lại dùng `progressOf().done` thay `stepIndex`; `MAX_LAUNCHES` giữ 8.
+  Bỏ `gatesProblem`, `collect` (cổng và quyết định learn-app) khỏi đoạn build.
+- `wire.createSpecs`: `check` giữ; `runState` còn cho phần cũ tới Task 14.
+
+- [ ] **Step 1: Test hỏng trước** (`specs-build-fixtures.cjs` dựng repo GitHub giả + mirror như fixture cũ, worker giả ghi
+  `progress.json`/`result.json`/`blocked.json`, commit trên nhánh spec; bắt đầu build bằng hàm `build()` của
+  `spec-build-commands.cjs` vì lệnh CLI còn bị chặn):
+  - `build worker runs the harness headless with slots and branch in headless.json and no plugin dir`
+  - `build prompt names the build segment, the checker and the branch and forbids adb and push`
+  - `a build that commits on the spec branch and writes result.json moves to smoking`
+  - `result.json pointing at a missing commit reruns the build then parks after two tries`
+  - `result.json on another branch or behind the branch tip reruns the build`
+  - `blocked.json during build asks the dev or the PO`
+  - `done plans in progress.json reset the rerun budget`
+  - `a harness review that asks for changes reruns the build`
+  - `inputs changed during build park the spec`
+- [ ] **Step 2:** Chạy, Expected: FAIL.
+- [ ] **Step 3:** Viết `build-result.cjs`, sửa các file.
+- [ ] **Step 4:** Chạy toàn bộ, Expected: PASS.
+- [ ] **Step 5: Commit** `feat(service): run the build segment through the harness headless contract`
 
 ### Task 12: Sửa lại qua `rework-<N>.md`
-Bỏ `back`, `reopen`, `decide`, `sendBack`, `planOfFiles`, `planOfFeature` (`change`, `provisional`, `phase-code-review`,
-`phase-landing`, `phase-trial`, `rework`): mọi yêu cầu sửa ghi `inputs/rework-<N>.md` rồi chạy lại `build`.
 
-### Task 13: Chạy thử máy và giao hàng
-Smoke = cài bản + mở app một lần bằng `run-step` (như bug loop), bỏ `smoke/report.md`, `debts.md`; `candidate` bỏ
-`state handoff`: service tự lấy nhánh/commit từ `result.json`, nội dung PR từ `brief/`. `approve g3` → ghi quyết định ở DB.
+**Files:**
+- Modify: `service/src/specs/{build-kit,rework,provisional,change,phase-code-review,phase-trial,phase-landing,machine,repo-files,trial-notes}.cjs`,
+  `service/src/spec-build-commands.cjs`
+- Test: `service/tests/specs-build-rework.test.cjs` (mới)
+
+**Interfaces:**
+- `build-kit.sendBack(run, reason, key): true` = `addRework`; bỏ `backTo`, `state`, `planOfFiles`, `planOfFeature`, `plansOf`.
+- `rework`: mục `{ n, key, text }`; file `inputs/rework-<N>.md` = `# Yêu cầu làm lại <N>` + nội dung; `reworkLine(list)` nhận
+  `[{ file }]`, nêu `.harness-run/<file>`.
+- `provisional`: bỏ `decisionsOf`, `collect`, `recordAnswer`, `hardOpen`, `provisionalWait`; `applyAnswers` chỉ còn: câu PO chọn
+  khác → `sendBack`. `machine` bỏ trạng thái `provisional`.
+- `change`: bỏ `affectedPlans`, `change.plans`; phần spec đổi đã duyệt ghi `inputs/spec-v<N>.md` và `repo-files.specVersions` đếm cả
+  `inputs/spec-v<N>.md` (N ≥ 2) cạnh `clarified/spec-v<N>.md` (`specAt` ưu tiên `clarified/`). `refreshBuilding` không in plan.
+- `phase-code-review.fixRound(run, text)`, `phase-trial.applyNotes`, `phase-landing.lost`: gọi `sendBack` mới, đường dẫn
+  `.harness-run/`.
+
+- [ ] **Step 1: Test hỏng trước:**
+  - `PO trial feedback becomes rework-1.md and the next build reads it first`
+  - `rework items clear after a good build and the files stay in inputs`
+  - `reviewer changes become a rework and count fix rounds, then park at the limit`
+  - `an approved source change during build writes the next spec version and a rework`
+  - `a review question answered Other by the PO becomes a rework`
+  - `the build path never calls the learn-app state CLI` (`ctx.specs.runState` ném lỗi nếu bị gọi)
+- [ ] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Sửa. **Step 4:** Chạy toàn bộ, Expected: PASS.
+- [ ] **Step 5: Commit** `feat(service): send every change back to the build as a rework file`
+
+### Task 13: Chạy thử máy, so UI và giao hàng
+
+**Files:**
+- Create: `service/src/smoke-device.cjs` (script chạy trong `run-step`), `service/src/specs/phase-smoke.cjs`, `service/src/specs/pr-text.cjs`,
+  `service/tests/smoke-device.test.cjs`, `service/tests/specs-build-device.test.cjs`, `service/tests/specs-build-handoff.test.cjs`
+- Modify: `service/src/handlers/{build,spec,uidiff}.cjs`, `service/src/bugs/job-results.cjs`,
+  `service/src/specs/{phase-build,phase-uidiff,phase-code-review,candidate,phase-candidate,phase-trial,trial-notes,machine,prompts}.cjs`
+- Delete: `service/src/specs/smoke-report.cjs`
+
+**Interfaces:**
+- `smoke-device.cjs <apkGlob> <package> <serial>`: APK mới nhất theo glob (dùng `result-apk`), `adb -s <serial> install -r -t`,
+  `am force-stop`, `monkey -p <package> -c android.intent.category.LAUNCHER 1`, chờ `DZ_SMOKE_WAIT_MS` (mặc định 8000), `pidof`
+  phải có, `logcat -d -b crash` không nhắc package. Lỗi → exit 1, stderr một dòng.
+- `handlers/build.prepare` khi `payload.smoke = { serial, holder }`: kiểm khoá `spec:<id>:run`, thêm bước `smoke` sau `assemble` với
+  env `ANDROID_SERIAL` + `PATH` có wrapper adb; thư mục spec `smoke-<sha12>`. `judgeBuild(..., { smoke })` bắt buộc bước `smoke`.
+- `phase-smoke.smoking(run)`: mượn máy → xếp `build` key `spec-<id>#smoke-<serial>` payload `{ batchId: 'spec-<id>', worktree: repo,
+  sha: HEAD, smoke }`; xong thì trả máy; đạt → `uidiff`; `assemble`/`smoke` đỏ → `fixRound('Chạy thử đỏ: …')`; việc hỏng → gác.
+- `phase-uidiff.screensOf`: `.harness-run/figma/<slug>.json` có `kind: screen` → `{ slug, name, node }`; handler `uidiff` bỏ deep link
+  bắt buộc, worker tự đi tới màn theo tên.
+- `candidate`: thư mục bỏ khỏi cây là `.harness-run`; nhánh bản clone phải là `dz/spec-<id>`; commit phần còn lại `chore: leftover changes`.
+- `phase-code-review.start`: thay kiểm `state.step === 'handoff'` bằng `resultProblem`.
+- `pr-text.prText(run): { title, body }`: `feat(<KEY>): <tiêu đề spec>`, body = các plan trong `result.json` + mục đầu
+  `brief/requirements.md` (≤ 60 dòng) + ghi chú trial; `phase-candidate.publish` dùng nó, bỏ `state handoff`.
+- `phase-trial`: bỏ `recordGate3`; `trial-notes` nhóm `debts` lấy từ `result.review.findings`, bỏ nhóm `smoke`.
+- `handlers/spec` + `prompts`: bỏ đoạn `smoke` agent, `deviceEnv`, `smokeRule`, `PLUGIN_ROOT`, `STATE_CLI`.
+
+- [ ] **Step 1: Test hỏng trước:**
+  - `smoke-device installs the newest apk and opens the package on the given serial` (adb giả ghi tham số)
+  - `smoke-device fails when the app is not running or crashed`
+  - `the smoke build step runs only on the held device`
+  - `after build the spec holds a device, installs and opens the app, then frees it`
+  - `a red smoke sends the build back with the failing step`
+  - `no free device waits for the dev without running`
+  - `ui diff screens come from the harness figma digests`
+  - `a dry run goes from build to landed-dry with PR text from the brief and no state CLI` (đi hết luồng)
+  - `the PO approval of an older candidate does not count for a newer one`
+  - `a commit that is not the approved one is never landed`
+  - `.harness-run never reaches the candidate tree`
+- [ ] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Viết. **Step 4:** Chạy toàn bộ, Expected: PASS.
+- [ ] **Step 5: Commit** `feat(service): smoke on a held device and hand off from result.json and the brief`
 
 ### Task 14: Xoá learn-app
-Xoá `service/vendor/learn-app/`, `PLUGIN_ROOT`, `STATE_CLI`, `runState`, `LEARN_APP_*` trong `worker-env`; viết lại 12 file test
-build theo fixture hợp đồng; `VENDOR_USERS` rỗng; `grep -ri "learn-app\|LEARN_APP\|\.learn-app" service/src service/tests`
-không còn kết quả; bỏ chặn `dz spec build` của Task 9.
+
+**Files:**
+- Delete: `service/vendor/learn-app/`, `service/tests/legacy-build/`, `service/tests/helpers/{headless-app,parallel-app}.cjs`
+- Modify: `service/src/specs/{wire,verify,build-kit}.cjs` (bỏ `runState`, `atGate`, `GATES`, `learnState`), `service/src/worker-env.cjs`
+  (bỏ `LEARN_APP_*`; `SECRET` thêm `WEBHOOK`), `service/src/spec-commands.cjs` (bỏ chặn `dz spec build`),
+  `service/tests/helpers/no-discord.cjs`, `service/tests/no-outside-imports.test.cjs` (`VENDOR_USERS` rỗng, không còn thư mục vendor),
+  các test còn nhắc `learn-app`/`LEARN_APP` (đổi tên repo mẫu `apero/learn-app` → `apero/demo-app`), `service/README.md` (mục build v2)
+- Test: port nốt các test cũ chưa có bản mới — `specs-build-{commands,prereq,limits,live,landing,landing-retry,forged,review}.test.cjs`
+  theo `specs-build-fixtures.cjs`; `spec-build-commands.test.cjs`, `wiring-cli.test.cjs` đổi từ "bị chặn" sang "chạy được".
+
+- [ ] **Step 1: Test hỏng trước:** `no file requires vendor/learn-app and the folder is gone`,
+  `spec build starts an approved spec on v2`, `worker env drops webhook variables from the operator shell`.
+- [ ] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Xoá, sửa, port test. **Step 4:** Chạy toàn bộ, Expected: PASS;
+  `grep -rni "learn-app\|LEARN_APP\|learnapp" service/src service/tests service/bin` không còn kết quả.
+- [ ] **Step 5: Commit** `refactor(service): remove learn-app`
