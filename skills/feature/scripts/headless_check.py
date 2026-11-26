@@ -92,7 +92,7 @@ def item_problems(q, item):
         problems.append(f"{at}: {item.get('category')} luôn hỏi PO, không được auto")
     if item.get("label") not in q["labels"]:
         problems.append(f"{at}: label phải là một trong {', '.join(q['labels'])}")
-    if not filled(item.get("source")):
+    if not filled(item.get("source")) and item.get("category") != "easy-change":
         problems.append(f"{at}: auto cần source")
     if q["blocking"] and item.get("category") != "evidence":
         problems.append(f"{at}: câu [chặn] chỉ auto khi category là evidence")

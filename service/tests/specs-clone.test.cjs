@@ -111,3 +111,11 @@ test('a bad specId, a bad figma link or a repointed origin is refused', async t 
   g(repo, 'remote', 'set-url', 'origin', '/elsewhere');
   await assert.rejects(prepareSpecClone({ ...base(w), specId: 'sp4' }), /origin/);
 });
+
+test('a pinned harness without the headless checker is refused with HARNESS', async t => {
+  const w = ready(t);
+  g(w.harness, 'rm', '-q', 'skills/feature/scripts/headless_check.py');
+  g(w.harness, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'drop checker');
+  const project = { ...w.project, harnessCommit: g(w.harness, 'rev-parse', 'HEAD') };
+  await assert.rejects(prepareSpecClone({ ...base(w), project }), error => error.code === 'HARNESS' && /headless_check\.py/.test(error.message));
+});

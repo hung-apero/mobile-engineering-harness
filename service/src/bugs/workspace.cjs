@@ -6,6 +6,7 @@ const {
 
 const AGENTS = ['bug-fixer', 'bug-reviewer', 'bug-scout', 'ui-board-judge'];
 const FEATURE_AGENTS = ['architect', 'coder', 'qa', 'reviewer'];
+const FEATURE_FILES = ['skills/feature/scripts/headless_check.py', 'skills/spec-clear/SKILL.md'];
 const COMMIT = /^[0-9a-f]{7,40}$/;
 const DARWIN_CONFIG = process.platform === 'darwin' ? '\tignorecase = true\n\tprecomposeunicode = true\n' : '';
 const MIRROR_CONFIG = `[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = true\n${DARWIN_CONFIG}[receive]\n\tdenyDeletes = true\n\tdenyNonFastForwards = true\n`;
@@ -102,8 +103,10 @@ async function checkHarness({ dzHome, project, git }) {
   return { harness, skills: skills.stdout.split('\0').filter(Boolean) };
 }
 
-async function linkHarness({ dzHome, project, repo, git, agents = AGENTS }) {
+async function linkHarness({ dzHome, project, repo, git, agents = AGENTS, files = [] }) {
   const { harness, skills } = await checkHarness({ dzHome, project, git });
+  const lost = files.filter(file => !lstat(path.join(harness, file))?.isFile());
+  if (lost.length) throw new GitError(`harness ghim thiếu ${lost.join(', ')}`, 'HARNESS');
   excludeLines(repo, ['.claude/']);
   const skillDir = realDirChain(repo, '.claude/skills');
   const agentDir = realDirChain(repo, '.claude/agents');
@@ -165,4 +168,4 @@ async function ensureClone({ dzHome, project, batch, sha, git = runGit }) {
   return { repo, startSha: fs.readFileSync(startFile, 'utf8').trim() };
 }
 
-module.exports = { versionBranch, ensureMirror, ensureVersionBranch, ensureClone, linkHarness, linkOverlay, excludeLines, FEATURE_AGENTS };
+module.exports = { versionBranch, ensureMirror, ensureVersionBranch, ensureClone, linkHarness, linkOverlay, excludeLines, FEATURE_AGENTS, FEATURE_FILES };

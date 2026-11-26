@@ -38,6 +38,8 @@ test('refresh after the source changed starts a fresh clone with the old answers
   assert.notEqual(s.repo(), first);
   assert.deepEqual(s.clones.map(c => [c.specId, c.markdown]), [[`${s.id}`, '# a'], [`${s.id}-r2`, '# a mới']]);
   assert.equal(JSON.parse(s.read('inputs/headless.json')).notes, 'inputs/po-notes-prev.md');
+  assert.match(s.read('inputs/po-notes-prev.md'), /\.harness-run\/inputs\/previous-spec\.md/);
+  assert.ok(s.read('inputs/previous-spec.md').length > 0);
   assert.match(s.read('inputs/po-notes-prev.md'), /Q1 Change path đi đâu\? \(PO trả lời, 2026-11-25\): B — "Ở lại"/);
   assert.match(s.read('inputs/previous-spec.md'), /Q1: B/);
   await s.finish(repo => asked(repo));

@@ -17,7 +17,7 @@ function notesOf(spec) {
   const lines = [
     '# Câu trả lời của lần làm trước', '',
     'Spec nguồn đã đổi nên đọc lại từ đầu. Câu nào vẫn đúng với spec mới thì giữ theo câu PO đã trả lời; câu agent tự chốt và câu PO nháp (chưa nộp) chỉ để tham khảo, vẫn hỏi lại PO.',
-    ...(previous.spec ? ['Bản spec đã làm rõ lần trước: .learn-app/inputs/previous-spec.md'] : []), '',
+    ...(previous.spec ? ['Bản spec đã làm rõ lần trước: .harness-run/inputs/previous-spec.md'] : []), '',
     ...previous.answers.map(answerLine), '',
     ...(previous.feedback?.length ? ['Góp ý của PO:', ...previous.feedback.map(text => `- "${oneLine(text)}"`), ''] : []),
   ];

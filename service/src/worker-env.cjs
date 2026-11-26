@@ -4,7 +4,9 @@ const LEAKING = ['LEARN_APP_DISCORD_', 'DISCORD_', 'CLAUDE_CODE_'];
 const REMOVED = ['CLAUDECODE', 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'GH_TOKEN', 'GITHUB_TOKEN'];
 const FIXED = ['CLAUDE_CONFIG_DIR', 'BUG_FIX_STATE_DIR', 'LEARN_APP_BUILD_SLOTS'];
 
-const isLeaking = name => LEAKING.some(prefix => name.startsWith(prefix)) || REMOVED.includes(name);
+const SECRET = /TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|API_?KEY|ACCESS_KEY|PRIVATE_KEY|_KEY$/i;
+
+const isLeaking = name => LEAKING.some(prefix => name.startsWith(prefix)) || REMOVED.includes(name) || SECRET.test(name);
 
 function workerEnv(base, dzHome) {
   const env = { ...base };

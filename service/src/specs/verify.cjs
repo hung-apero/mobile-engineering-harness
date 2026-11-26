@@ -36,9 +36,9 @@ async function atGate(run, repo, gate = 'g1') {
   return line(Array.isArray(missing) ? missing.join('; ') : stderr || `next trả mã ${code}`, 500);
 }
 
-function unseenForPo(spec, md) {
+function unseen(spec, md, modes = ['ask', 'auto']) {
   const shown = new Set((spec.data.rounds ?? []).flatMap(round => [...round.ask, ...round.auto]));
-  return mergeTriage(parseQuestions(md), files.readJson(spec.data.repo, 'triage.json')).some(q => !q.answered && !shown.has(q.id) && q.mode === 'ask');
+  return mergeTriage(parseQuestions(md), files.readJson(spec.data.repo, 'triage.json')).some(q => !q.answered && !shown.has(q.id) && modes.includes(q.mode));
 }
 
 async function inspect(run) {
@@ -51,10 +51,10 @@ async function inspect(run) {
   const md = files.read(repo, 'questions.md');
   if (md === null) return short('chưa có questions.md');
   if (segment.name === 'ask') return { type: 'questions', md };
-  if (unseenForPo(run.spec, md)) return { type: 'questions', md };
+  if (unseen(run.spec, md, ['ask'])) return { type: 'questions', md };
   if (parseQuestions(md).some(q => q.blocking && !q.answered)) return { type: 'questions', md };
   const latest = files.latestSpec(repo);
-  if (!latest || latest.version <= (run.spec.data.reviewFloor ?? 1)) return short('chưa có bản spec đã làm rõ mới');
+  if (!latest || latest.version <= (run.spec.data.reviewFloor ?? 1)) return unseen(run.spec, md) ? { type: 'questions', md } : short('chưa có bản spec đã làm rõ mới');
   return { type: 'clarified', md, latest };
 }
 

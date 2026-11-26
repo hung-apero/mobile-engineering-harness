@@ -2,6 +2,7 @@ const jobs = require('../jobs.cjs');
 const files = require('./repo-files.cjs');
 const { patch, decide, findJob, park } = require('./kit.cjs');
 const { writeRework, reworkOf } = require('./rework.cjs');
+const { hashText } = require('../text-hash.cjs');
 
 const MAX_TRIES = 2;
 const MAX_REASON = 500;
@@ -27,10 +28,16 @@ function writeConfig(run) {
   files.write(repo, 'inputs/headless.json', `${JSON.stringify(config, null, 1)}\n`);
   files.remove(repo, 'blocked.json');
   files.remove(repo, 'headless-blocked.json');
+  if (!run.spec.approvedSha) files.remove(repo, 'inputs/approval.json');
+}
+
+function forged({ repo, rawSha }) {
+  return Boolean(rawSha) && hashText(files.read(repo, 'inputs/spec-v1.md') ?? '') !== rawSha;
 }
 
 function launch(run, { slots = 1, extra = {} } = {}) {
   const { repo, figmaUrl, segment } = run.spec.data;
+  if (forged(run.spec.data)) return park(run, 'worker đã sửa .harness-run/inputs/spec-v1.md, không chạy tiếp trên bản này; dz spec cancel rồi gửi lại spec');
   writeConfig(run);
   const rework = reworkOf(run.spec);
   const payload = { specId: run.spec.id, segment: segment.name, repo, figma: Boolean(figmaUrl), ...(rework.length && { rework }), ...extra };

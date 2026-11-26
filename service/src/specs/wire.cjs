@@ -23,6 +23,8 @@ async function checkRepo(repo) {
   if (odd) throw new Error(`bản clone spec có cấu hình git lạ: ${odd}`);
 }
 
+const harnessError = message => Object.assign(new Error(message), { code: 'HARNESS' });
+
 function stateEnv(ctx, project, headless) {
   const overrides = { ...isolatedEnv(ctx.dzHome, { config: GIT_CONFIG }), ...IDENTITY, LEARN_APP_HEADLESS: headless ? '1' : null, LEARN_APP_TRACKING: project.live === true ? null : 'off' };
   return applyEnv(workerEnv(ctx.env, ctx.dzHome), overrides);
@@ -46,9 +48,11 @@ function createSpecs(ctx, { connect, cli = STATE_CLI, checker = null, python = '
     async check(project, repo, segment) {
       await checkRepo(repo);
       const script = checker ?? path.join(ctx.dzHome, 'harness', 'skills', 'feature', 'scripts', 'headless_check.py');
+      if (!fs.lstatSync(script, { throwIfNoEntry: false })?.isFile()) throw harnessError(`harness ghim thiếu ${script}`);
       return new Promise((resolve, reject) => {
-        execFile(python, [script, segment, repo], { cwd: repo, env: stateEnv(ctx, project, false), timeout: CHECK_TIMEOUT_MS, maxBuffer: MAX_BUFFER, encoding: 'utf8' }, (error, stdout, stderr) => {
+        execFile(python, ['-I', script, segment, repo], { cwd: repo, env: stateEnv(ctx, project, false), timeout: CHECK_TIMEOUT_MS, maxBuffer: MAX_BUFFER, encoding: 'utf8' }, (error, stdout, stderr) => {
           const code = error ? error.code : 0;
+          if (code === 'ENOENT') return reject(harnessError(`không chạy được ${python}`));
           if (code !== 0 && code !== 2) return reject(new Error(`headless_check lỗi: ${firstLine(stderr || error?.message || String(code))}`));
           try {
             const out = JSON.parse(stdout);

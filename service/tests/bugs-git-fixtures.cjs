@@ -37,7 +37,7 @@ function makeHarness(harness) {
   fs.mkdirSync(harness, { recursive: true });
   g(harness, 'init', '-q', '-b', 'main');
   return commit(harness, {
-    'skills/bug-fix/SKILL.md': 'x\n', 'skills/bug/SKILL.md': 'y\n', 'skills/feature/SKILL.md': 'f\n', 'skills/spec-clear/SKILL.md': 's\n', 'skills/README.md': 'z\n',
+    'skills/bug-fix/SKILL.md': 'x\n', 'skills/bug/SKILL.md': 'y\n', 'skills/feature/SKILL.md': 'f\n', 'skills/feature/scripts/headless_check.py': 'print()\n', 'skills/spec-clear/SKILL.md': 's\n', 'skills/README.md': 'z\n',
     ...Object.fromEntries(HARNESS_AGENTS.map(name => [`agents/${name}.md`, `${name}\n`])),
   });
 }

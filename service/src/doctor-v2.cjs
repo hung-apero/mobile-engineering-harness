@@ -1,8 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadProjects } = require('./projects.cjs');
-
-const HARNESS_FILES = ['skills/feature/scripts/headless_check.py', 'skills/spec-clear/SKILL.md'];
+const { FEATURE_FILES } = require('./bugs/workspace.cjs');
 const result = (level, name, detail) => ({ level, name, detail });
 const isFile = file => fs.lstatSync(file, { throwIfNoEntry: false })?.isFile() === true;
 
@@ -24,7 +23,7 @@ function checkPython({ exec, baseEnv }) {
 }
 
 function harnessFilesProblem(dir) {
-  const lost = HARNESS_FILES.filter(file => !isFile(path.join(dir, file)));
+  const lost = FEATURE_FILES.filter(file => !isFile(path.join(dir, file)));
   return lost.length ? `harness ghim thiếu ${lost.join(', ')}` : null;
 }
 

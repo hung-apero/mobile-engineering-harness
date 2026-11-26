@@ -400,3 +400,10 @@ test('env: API keys and GitHub tokens never reach a worker', () => {
   }
   assert.equal(base.GH_TOKEN, 'x');
 });
+
+test('env: tokens, keys, secrets and passwords from the operator shell never reach a worker', () => {
+  const base = { PATH: '/bin', HOME: '/h', JAVA_HOME: '/j', ANDROID_HOME: '/sdk', SSH_AUTH_SOCK: '/s', GITHUB_PERSONAL_ACCESS_TOKEN: 'a', FIGMA_API_KEY: 'b', ORCA_AGENT_SESSION_SPAWN_TOKEN: 'c', DB_PASSWORD: 'd', MY_SECRET: 'e', AWS_ACCESS_KEY_ID: 'f', OPENAI_API_KEY: 'g', SIGNING_KEY: 'h' };
+  const env = worker.workerEnv(base, '/dz');
+  for (const name of ['GITHUB_PERSONAL_ACCESS_TOKEN', 'FIGMA_API_KEY', 'ORCA_AGENT_SESSION_SPAWN_TOKEN', 'DB_PASSWORD', 'MY_SECRET', 'AWS_ACCESS_KEY_ID', 'OPENAI_API_KEY', 'SIGNING_KEY']) assert.equal(env[name], undefined, name);
+  assert.deepEqual([env.PATH, env.HOME, env.JAVA_HOME, env.ANDROID_HOME, env.SSH_AUTH_SOCK], ['/bin', '/h', '/j', '/sdk', '/s']);
+});

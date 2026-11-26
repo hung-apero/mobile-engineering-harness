@@ -52,6 +52,7 @@ async function look(run) {
     const found = await inspect(run);
     return restored && found.type === 'clarified' ? { type: 'short', reason: 'worker đã sửa câu trả lời, bản spec phải viết lại' } : found;
   } catch (error) {
+    if (error.code === 'HARNESS') return { type: 'blocked', kind: 'harness', role: 'dev', reason: firstLine(error), missing: [] };
     return { type: 'short', reason: firstLine(error) };
   }
 }

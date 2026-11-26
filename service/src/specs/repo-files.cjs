@@ -69,6 +69,18 @@ function specVersions(repo) {
   return [...first, ...clarifiedVersions(repo)].sort((a, b) => a - b);
 }
 
+function entryBytes(full, entry) {
+  if (entry.isSymbolicLink()) return Buffer.from(`->${fs.readlinkSync(full)}`);
+  if (!entry.isFile()) return Buffer.from('<không phải file thường>');
+  const fd = fs.openSync(full, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
+  try {
+    const stat = fs.fstatSync(fd);
+    return stat.isFile() && stat.size <= MAX ? fs.readFileSync(fd) : Buffer.from(`<quá lớn ${stat.size}>`);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 function inputsSha(repo) {
   const probe = realParent(repo, 'inputs/x');
   if (!probe || !fs.existsSync(path.dirname(probe))) return sha256('');
@@ -76,9 +88,9 @@ function inputsSha(repo) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) return walk(full);
     const rel = path.relative(path.dirname(probe), full);
-    return [`${rel}\0${entry.isSymbolicLink() ? `->${fs.readlinkSync(full)}` : fs.readFileSync(full, 'utf8')}`];
+    return [Buffer.from(`${rel}\0`), entryBytes(full, entry), Buffer.from('\0\0')];
   });
-  return sha256(walk(path.dirname(probe)).join('\0\0'));
+  return sha256(Buffer.concat(walk(path.dirname(probe))));
 }
 
 function specAt(repo, version) {

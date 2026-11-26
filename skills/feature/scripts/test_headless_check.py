@@ -90,6 +90,12 @@ class HeadlessCheckTest(unittest.TestCase):
         self.assertTrue(any("Q2" in p and "source" in p for p in problems))
         self.assertTrue(any("Q2" in p and "label" in p for p in problems))
 
+    def test_easy_change_auto_without_source_ok(self):
+        self.run.write("questions.md", FIXTURE)
+        auto = {"id": "Q2", "decision": "auto", "category": "easy-change", "label": "A", "reason": "cách vẽ, dễ đổi"}
+        self.run.write("triage.json", ask_items(Q2=auto))
+        self.assertEqual(self.problems("ask"), [])
+
     def test_blocking_question_auto_only_with_evidence(self):
         self.run.write("questions.md", FIXTURE)
         auto = {"id": "Q1", "decision": "auto", "category": "easy-change", "label": "A", "source": "spec", "reason": "x"}

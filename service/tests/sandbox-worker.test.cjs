@@ -48,8 +48,8 @@ test('a sandboxed worker is found by its session, keeps its argv and dies with i
 
 test('the worker writes its log through the open descriptor although the logs folder is closed to it', ON_MAC, async t => {
   const w = world(t);
-  const bin = writeScript(path.join(w.h.root, 'say'), 'echo hello; cat "$DZ_SECRET"');
-  const contained = w.box({}, { env: { DZ_SECRET: w.at('secrets/t') } });
+  const bin = writeScript(path.join(w.h.root, 'say'), 'echo hello; cat "$DZ_PROBE_FILE"');
+  const contained = w.box({}, { env: { DZ_PROBE_FILE: w.at('secrets/t') } });
   const { logFile } = start(w, contained, { bin, args: [] });
   const text = await waitFor(() => fs.readFileSync(logFile, 'utf8').includes('not permitted') && fs.readFileSync(logFile, 'utf8'));
   assert.match(text, /^hello\n/);

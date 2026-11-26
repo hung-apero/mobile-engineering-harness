@@ -52,6 +52,7 @@ v2 là bản fork `~/Desktop/src/dev-zone` (nhánh `dev-zone`), dùng harness l�
 - Overlay của mỗi project bật: `$DZ_HOME/projects/<KEY>.overlay.yaml` (chép từ `.harness-overlay/overlay.yaml` của app). Bản clone spec nhận nó ở `.harness-overlay/overlay.yaml`, `upstream` trỏ vào harness ghim.
 - Bài thử: `live: false`, `discord: true` — Discord chạy thật, Jira, git push, gh, Firebase, Confluence vẫn khô.
 - Chạy bằng `cd service && node bin/dz.cjs run` trong terminal; không `dz install`, không launchd.
+- Worker không nhận biến nào của shell có tên dạng token, key, secret, password (vd `GITHUB_PERSONAL_ACCESS_TOKEN`, `FIGMA_API_KEY`). Khoá Figma phải nằm trong `secrets/figma-read.json` (khối `env` của server), không dựa vào biến shell.
 - Bot Discord chỉ một phiên nhận tin: tắt bàn điều phối của v1 (`DZ_HOME=~/.dev-zone node bin/dz.cjs desk stop` từ mã v1) trước khi `desk start` ở v2.
 - `dz doctor` ở v2 kiểm thêm overlay từng project bật, `python3` ≥ 3.9, harness ghim có `skills/feature/scripts/headless_check.py` và `skills/spec-clear/SKILL.md`.
 - `dz spec build` bị chặn ở v2 tới khi có đoạn build mới; spec không cần nữa thì `dz spec cancel <id>`.
