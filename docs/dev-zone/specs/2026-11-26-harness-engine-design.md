@@ -29,32 +29,36 @@ dev-zone/                  fork harness (nhánh dev-zone)
   đang sửa. **[Đ]**
 - `service/` không còn import gì ngoài `service/`. 4 hàm của learn-app `lib/` (`hashText`, `questionBlocks`, `readPlans`,
   `stepIndex`): chép hàm còn dùng, bỏ hàm chỉ phục vụ learn-app. **[Đ]**
+- Đoạn build của service và 12 file test của nó gọi state CLI thật của learn-app (73 file). Để mọi commit xanh trong lúc chuyển,
+  phần đó chép tạm vào `service/vendor/learn-app/`, chỉ test và đoạn build cũ dùng; `dz spec build` từ chối ở v2 cho tới khi
+  đoạn build chuyển xong (phần B của plan 01), rồi xoá thư mục này. **[Đ]**
 - Kéo harness gốc: `git pull harness main`. Phần headless của skill có thể PR ngược về harness gốc khi ổn định (không bắt buộc).
 
 ## 3. Hợp đồng chạy không người (`HARNESS_HEADLESS=1`) **[Đ]**
-Thư mục `.harness-run/` trong bản clone của worker, loại khỏi git bằng `.git/info/exclude`. `inputs/` do service ghi, `out/` do
-worker ghi. Khi headless, `briefs/`, `plans/handoff/`, `plans/reports/` không được đụng; mọi thứ ghi dưới `.harness-run/out/`.
+Thư mục `.harness-run/` trong bản clone của worker, loại khỏi git bằng `.git/info/exclude`. `inputs/` do service ghi (worker
+không ghi; service so băm trước/sau mỗi đoạn), mọi file khác do worker ghi ngay dưới `.harness-run/`. Khi headless, `briefs/`,
+`plans/handoff/`, `plans/reports/` không được đụng.
 
-| File | Ghi | Nội dung |
+| File (dưới `.harness-run/`) | Ghi | Nội dung |
 |---|---|---|
 | `inputs/headless.json` | service | `{ spec, figma: {url}\|null, app, case: existing\|new, segment: ask\|clarify\|build, notes?, rework?[] }` |
-| `inputs/spec-v<N>.md`, `inputs/rework-<N>.md`, `inputs/notes-<N>.md` | service | spec, yêu cầu sửa, góp ý PO |
+| `inputs/spec-v1.md`, `inputs/rework-<N>.md`, `inputs/notes-<N>.md` | service | spec gốc, yêu cầu sửa, góp ý PO |
 | `inputs/approval.json` | service | `{ sha, by, at }` — chỉ để worker biết; cổng thật ở DB |
-| `out/questions.md` | worker; service ghi câu trả lời | format quiz: `## Q<n> · … [chặn]`, `- A.`, `- **Đề xuất: B** — …`, `**PO chọn (…)**`, `**Agent tự chốt (…)**` |
-| `out/triage.json` | worker | `{ items: [{ id, decision: ask\|auto, category, label?, source?, reason }] }` — schema của service `triage.cjs` |
-| `out/scout.md`, `out/figma/*.json` | worker | bản đồ app, digest Figma (của `spec-clear`) |
-| `out/spec-clarified.md`, `out/brief/` | worker | spec đã làm rõ, requirements/AC/design |
-| `out/progress.json` | worker | `{ plans: [{ id, title, status: pending\|coding\|done\|blocked }] }`, cập nhật mỗi khi một plan đổi |
-| `out/result.json` | worker | đoạn build: `{ branch, commit, plans, tests, review: { verdict, findings } }` |
-| `out/blocked.json` | worker | `{ segment, reason, missing[] }` khi cần người |
+| `questions.md` | worker; service ghi câu trả lời | format quiz: `## Q<n> · … [chặn]`, `- A.`, `- **Đề xuất: B** — …`, `**PO chọn (…)**`, `**Agent tự chốt (…)**` |
+| `triage.json` | worker | `{ items: [{ id, decision: ask\|auto, category, label?, source?, reason }] }` — schema của service `triage.cjs` |
+| `scout.md`, `figma/*.json` | worker | bản đồ app, digest Figma (của `spec-clear`) |
+| `clarified/spec-v<N>.md` (N ≥ 2, tăng mỗi lần làm rõ), `brief/` | worker | spec đã làm rõ, requirements/AC/design |
+| `progress.json` | worker | `{ plans: [{ id, title, status: pending\|coding\|done\|blocked }] }`, cập nhật mỗi khi một plan đổi |
+| `result.json` | worker | đoạn build: `{ branch, commit, plans, tests, review: { verdict, findings } }` |
+| `blocked.json` | worker | `{ segment, reason, missing[] }` khi cần người |
 
 Đoạn:
 
 | Đoạn | Worker | Dừng |
 |---|---|---|
 | `ask` | `spec-clear` (scout ∥ Figma digest, rồi agent viết câu hỏi) → `questions.md` + `triage.json` | viết xong, kể cả "Không có câu hỏi" |
-| `clarify` | `business-prepare-feature` reconcile với câu trả lời + validate → `spec-clarified.md`, `brief/`. Câu trả lời đẻ câu mới → `spec-clear` chế độ thêm câu | có bản để duyệt, hoặc có câu mới |
-| `build` | `coding-orchestrator` đọc `out/brief/`; mode chỉ `single` hoặc `team` (`parallel-features` tắt); `rework-<N>.md` đọc trước mọi việc | commit trên nhánh cục bộ + `result.json` |
+| `clarify` | `business-prepare-feature` reconcile với câu trả lời + validate → `clarified/spec-v<N>.md`, `brief/`. Câu trả lời đẻ câu mới → `spec-clear` chế độ thêm câu | có bản để duyệt, hoặc có câu mới |
+| `build` | `coding-orchestrator` đọc `brief/`; mode chỉ `single` hoặc `team` (`parallel-features` tắt); `rework-<N>.md` đọc trước mọi việc | commit trên nhánh cục bộ + `result.json` |
 
 Bỏ khi headless: PM, Designer, Release Gate của `/feature` (service và quiz lo). Cấm khi headless (cả skill và agent con):
 `AskUserQuestion`; push, mở PR, `gh`; ghi vào `inputs/`; ghi dòng `PO chọn`/`Agent tự chốt`; `--force-handoff`; `open`. Mọi chỗ
@@ -64,11 +68,12 @@ Kiểm: `skills/feature/scripts/headless_check.py <segment> <repo>` (Python stdl
 service chạy lại sau. Kiểm schema mọi file trên, format câu hỏi (≥ 2 lựa chọn, đúng một Đề xuất, id không trùng),
 `triage.json` đủ mọi câu chưa trả lời và không `auto` câu thuộc nhóm luôn hỏi (S02), `result.json` có commit tồn tại.
 
-`spec-clear` bản trong fork: khi headless không hỏi (đầu vào từ `headless.json`), thư mục làm việc là `.harness-run/out/`,
+`spec-clear` bản trong fork: khi headless không hỏi (đầu vào từ `headless.json`), thư mục làm việc là `.harness-run/`,
 agent viết câu hỏi ghi thêm `triage.json`, `NEEDS_CONTEXT`/lỗi Figma → `blocked.json`. Bản ở `~/.claude/skills` không đổi.
 
 `bug-fix` khi headless: mọi chỗ "hỏi user" (remote, thiết bị, username, duyệt plan, câu spec) lấy từ brief hoặc ghi vào kết
-quả ticket, không hỏi; phần luật đang nằm trong `prompts-bug.cjs` chuyển vào skill, prompt chỉ còn tham số. **[Đ]**
+quả ticket, không hỏi. Luật viết vào skill; prompt `prompts-bug.cjs` giữ nguyên đợt này (trùng thì an toàn), rút gọn về chỉ còn
+tham số ở đợt sau. **[Đ]**
 
 ## 4. Thay đổi phía service **[Đ]**
 
@@ -98,7 +103,8 @@ phase-segment,phase-trial,phase-uidiff,answer-ledger,phase-read}.cjs`, `bugs/wor
 
 ## 6. Bài thử **[C]**
 Trên v2 (`~/.dev-zone-v2`, cổng 8788), AAP864 `live: false`, `discord: true`:
-1. `dz spec cancel 1` ở bản cũ (người dùng chạy hoặc cho go).
+1. Bản cũ không có lệnh huỷ: spec #1 ở bản cũ để yên (chạy khô, ping chỉ ghi log) cho tới khi người dùng cho go tắt bản cũ.
+   v2 không nhận lại spec này.
 2. Người dùng gửi link Phase 15 (Confluence 332470208 + Figma) vào kênh Discord thử.
 3. Đạt khi: thread nhận link quiz; quiz có câu "Change path" và các ô spec trống; câu tiền/phần thưởng không bị tự chốt; trả
    lời → `clarify` → trang review → duyệt → spec `approved`. Không ghi Jira, GitHub, Firebase, Confluence (đọc lại để chứng
