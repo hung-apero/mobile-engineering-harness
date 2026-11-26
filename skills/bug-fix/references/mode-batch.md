@@ -2,6 +2,8 @@
 
 Đọc từ `../SKILL.md` khi input là JQL / board / sprint / ≥ 2 key Jira / report `ui-diff`. Session này là **leader**: nhận task, giao việc cho agent bên dưới, theo dõi, gom kết quả. Leader **không tự sửa code và không tự điều tra**. Trả lời user bằng ngôn ngữ của user.
 
+`HARNESS_HEADLESS=1` → mọi bước "hỏi user" trong file này theo bảng `../SKILL.md` §Chạy không người.
+
 ## Leader chỉ điều phối (bắt buộc)
 
 Leader nhận task rồi giao cho agent bên dưới thực thi; luồng chính không làm việc chuyên môn.
