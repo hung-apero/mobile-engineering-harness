@@ -3,14 +3,12 @@ const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { createConfluence } = require('./confluence.cjs');
 const { prepareSpecClone } = require('./clone.cjs');
-const { STATE_CLI } = require('./prompts.cjs');
 const { recordWould } = require('../bugs/effects.cjs');
 const { runGit } = require('../bugs/git.cjs');
 const { isolatedEnv, IDENTITY } = require('../bugs/prompts-env.cjs');
 const { workerEnv, applyEnv } = require('../worker-env.cjs');
 const { firstLine } = require('../redact.cjs');
 
-const TIMEOUT_MS = 2 * 60 * 1000;
 const CHECK_TIMEOUT_MS = 60 * 1000;
 const MAX_BUFFER = 16 * 1024 * 1024;
 const GIT_CONFIG = [['core.hooksPath', '/dev/null'], ['core.fsmonitor', 'false'], ['commit.gpgSign', 'false'], ['core.attributesFile', '/dev/null']];
@@ -25,12 +23,11 @@ async function checkRepo(repo) {
 
 const harnessError = message => Object.assign(new Error(message), { code: 'HARNESS' });
 
-function stateEnv(ctx, project, headless) {
-  const overrides = { ...isolatedEnv(ctx.dzHome, { config: GIT_CONFIG }), ...IDENTITY, LEARN_APP_HEADLESS: headless ? '1' : null, LEARN_APP_TRACKING: project.live === true ? null : 'off' };
-  return applyEnv(workerEnv(ctx.env, ctx.dzHome), overrides);
+function checkEnv(ctx) {
+  return applyEnv(workerEnv(ctx.env, ctx.dzHome), { ...isolatedEnv(ctx.dzHome, { config: GIT_CONFIG }), ...IDENTITY });
 }
 
-function createSpecs(ctx, { connect, cli = STATE_CLI, checker = null, python = 'python3' } = {}) {
+function createSpecs(ctx, { connect, checker = null, python = 'python3' } = {}) {
   const adapters = new Map();
   return {
     busy: new Set(),
@@ -50,7 +47,7 @@ function createSpecs(ctx, { connect, cli = STATE_CLI, checker = null, python = '
       const script = checker ?? path.join(ctx.dzHome, 'harness', 'skills', 'feature', 'scripts', 'headless_check.py');
       if (!fs.lstatSync(script, { throwIfNoEntry: false })?.isFile()) throw harnessError(`harness ghim thiếu ${script}`);
       return new Promise((resolve, reject) => {
-        execFile(python, ['-I', script, segment, repo], { cwd: repo, env: stateEnv(ctx, project, false), timeout: CHECK_TIMEOUT_MS, maxBuffer: MAX_BUFFER, encoding: 'utf8' }, (error, stdout, stderr) => {
+        execFile(python, ['-I', script, segment, repo], { cwd: repo, env: checkEnv(ctx), timeout: CHECK_TIMEOUT_MS, maxBuffer: MAX_BUFFER, encoding: 'utf8' }, (error, stdout, stderr) => {
           const code = error ? error.code : 0;
           if (code === 'ENOENT') return reject(harnessError(`không chạy được ${python}`));
           if (code !== 0 && code !== 2) return reject(new Error(`headless_check lỗi: ${firstLine(stderr || error?.message || String(code))}`));
@@ -60,15 +57,6 @@ function createSpecs(ctx, { connect, cli = STATE_CLI, checker = null, python = '
           } catch {
             reject(new Error('headless_check trả kết quả không phải JSON'));
           }
-        });
-      });
-    },
-    async runState(project, repo, args, { headless = false } = {}) {
-      await checkRepo(repo);
-      return new Promise(resolve => {
-        execFile(process.execPath, [cli, ...args], { cwd: repo, env: stateEnv(ctx, project, headless), timeout: TIMEOUT_MS, maxBuffer: MAX_BUFFER, encoding: 'utf8' }, (error, stdout, stderr) => {
-          const code = error ? (Number.isInteger(error.code) ? error.code : 1) : 0;
-          resolve({ code, stdout, stderr: stderr || (error && !Number.isInteger(error.code) ? error.message.split('\n')[0] : '') });
         });
       });
     },

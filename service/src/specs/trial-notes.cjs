@@ -1,6 +1,6 @@
 const { openItems } = require('./provisional.cjs');
 
-const GROUPS = [['smoke', 'Lỗi nhỏ khi chạy thử'], ['ui', 'Lệch UI'], ['debts', 'Nợ của code'], ['review', 'Người kiểm code ghi nhận']];
+const GROUPS = [['ui', 'Lệch UI'], ['debts', 'Nợ của code'], ['review', 'Người kiểm code ghi nhận']];
 const MAX_NOTES = 60;
 
 function trialNotes(spec) {

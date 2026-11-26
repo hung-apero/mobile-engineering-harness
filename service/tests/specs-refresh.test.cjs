@@ -121,22 +121,18 @@ test('a comment that keeps failing does not touch the approval and calls the dev
 
 test('dry run: only local commands, no Discord, no Confluence write, no push', async t => {
   const s = setup(t);
-  const ran = [];
-  const real = s.ctx.specs.runState;
-  s.ctx.specs.runState = (project, repo, args) => { ran.push(args[0]); return real(project, repo, args); };
   s.h.webhook('ABC1');
   await s.toReview();
   await approve(s);
   await s.tick(10 * 3600000);
   assert.deepEqual(s.sends, []);
-  assert.deepEqual(ran, []);
   for (const { args, env } of s.calls) {
     assert.ok(args.includes('Bash(git push:*)'));
     assert.ok(args.includes('AskUserQuestion'));
     assert.equal(args.includes('--mcp-config'), false);
     assert.equal(env.HARNESS_HEADLESS, '1');
     assert.equal(env.GIT_SSH_COMMAND, '/usr/bin/false');
-    assert.equal(Object.keys(env).some(name => /^(?:LEARN_APP_)?DISCORD_|GH_TOKEN|JIRA_API/.test(name)), false);
+    assert.equal(Object.keys(env).some(name => /^DISCORD_|GH_TOKEN|JIRA_API/.test(name)), false);
   }
   assert.equal(store.getSpec(s.ctx.db, s.id).state, 'approved');
 });

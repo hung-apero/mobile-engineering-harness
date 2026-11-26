@@ -5,19 +5,13 @@ const path = require('node:path');
 const { prepare } = require('../src/handlers/spec.cjs');
 const { setup, SHA, LANE_SHA } = require('./handlers-fixtures.cjs');
 
-const SERIAL = 'emulator-5554';
-
 function make(t) {
   const w = setup(t);
   const repo = path.join(w.dzHome, 'workspaces', 'AAP864', 'specs', '7', 'repo');
   fs.mkdirSync(repo, { recursive: true });
   const options = extra => ({ dzHome: w.dzHome, project: w.project, adb: '/usr/bin/true', ...extra });
   const job = (payload, extra) => ({ slotsGranted: 2, payload: { specId: 7, repo, ...payload }, ...extra });
-  const lock = entry => {
-    fs.mkdirSync(path.join(w.dzHome, 'bug-fix-state'), { recursive: true });
-    fs.writeFileSync(path.join(w.dzHome, 'bug-fix-state', 'devices.json'), JSON.stringify({ [SERIAL]: entry }));
-  };
-  return { ...w, specRepo: repo, options, job, lock };
+  return { ...w, specRepo: repo, options, job };
 }
 
 test('the code worker runs the harness headless, with no push and no device', t => {
@@ -29,22 +23,6 @@ test('the code worker runs the harness headless, with no push and no device', t 
   for (const rule of ['Bash(adb:*)', 'Bash(emulator:*)', 'Bash(git push:*)', 'Bash(gh:*)', 'Bash(*platform-tools/adb*)']) assert.ok(out.disallowedTools.includes(rule), rule);
   assert.notEqual(out.permissionMode, 'bypassPermissions');
   assert.throws(() => prepare(w.job({ segment: 'build', branch: 'main' }), w.options()), /payload\.branch/);
-});
-
-test('the smoke worker runs only on the device it still holds', t => {
-  const w = make(t);
-  const job = w.job({ segment: 'smoke', serial: SERIAL, holder: 'spec:7:run' });
-  assert.throws(() => prepare(job, w.options()), /không còn giữ khoá/);
-  w.lock({ holder: 'spec:8:run' });
-  assert.throws(() => prepare(job, w.options()), /không còn giữ khoá/);
-  w.lock({ holder: 'spec:7:run' });
-  const out = prepare(job, w.options());
-  assert.equal(out.env.ANDROID_SERIAL, SERIAL);
-  assert.notEqual(out.env.PATH.split(path.delimiter)[0], process.env.PATH.split(path.delimiter)[0]);
-  assert.ok(!out.disallowedTools.includes('Bash(adb:*)'));
-  assert.ok(out.disallowedTools.includes('Bash(*platform-tools/adb*)'));
-  assert.throws(() => prepare(w.job({ segment: 'smoke', serial: SERIAL, holder: 'spec:8:run' }), w.options()), /không còn giữ khoá/);
-  assert.throws(() => prepare(job, w.options({ project: { ...w.project, excludedDevices: [SERIAL] } })), /serial/);
 });
 
 test('the review worker reads one commit, with a schema and no write tools', t => {

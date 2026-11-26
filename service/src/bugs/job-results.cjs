@@ -59,8 +59,8 @@ function judgeGateJob(run, job) {
 
 async function judgeBuildJob(run, job) {
   if (!usable(job)) return { broken: true, reason: brokenReason(job) };
-  const { worktree, sha, distribute } = job.payload;
-  return settle(await build.judgeBuild(job.result, { worktree, sha, apkGlob: run.project.commands.apkGlob, distribute }));
+  const { worktree, sha, distribute, smoke } = job.payload;
+  return settle(await build.judgeBuild(job.result, { worktree, sha, apkGlob: run.project.commands.apkGlob, distribute, smoke: Boolean(smoke) }));
 }
 
 module.exports = { bugPayload, reviewPayload, gatePayload, buildPayload, parseBugJob, parseReviewJob, judgeGateJob, judgeBuildJob };

@@ -176,3 +176,28 @@ test('an unreadable result, or one without the distribution that was asked for, 
   assert.equal((await w.judge(built, { distribute: true })).ok, false);
   assert.equal((await w.judge({ steps: [step('assemble'), step('distribute')] }, { distribute: true })).ok, true);
 });
+
+test('the smoke step installs and opens the app only on the held device, after assemble and without distribution', async t => {
+  const w = world(t);
+  const serial = 'emulator-5554';
+  w.project.package = 'com.demo.app';
+  const smoke = { specId: 7, serial, holder: 'spec:7:run' };
+  const run = (extra = {}) => prepare({ payload: { batchId: 'spec-7', worktree: w.repo, sha: SHA, distribute: true, smoke: { ...smoke, ...extra } } }, { dzHome: w.dzHome, project: w.project, adb: '/usr/bin/true' });
+  assert.throws(() => run(), /không còn giữ khoá/);
+  fs.mkdirSync(path.join(w.dzHome, 'bug-fix-state'), { recursive: true });
+  fs.writeFileSync(path.join(w.dzHome, 'bug-fix-state', 'devices.json'), JSON.stringify({ [serial]: { holder: 'spec:7:run' } }));
+  run();
+  const steps = readSpec(path.join(w.dzHome, 'workspaces', 'AAP864', 'batches', 'spec-7', `smoke-${SHA.slice(0, 12)}`, 'spec.json')).steps;
+  assert.deepEqual(steps.map(s => s.name), ['verify', 'assemble', 'smoke']);
+  const last = steps.at(-1);
+  assert.deepEqual(last.argv, [process.execPath, path.join(__dirname, '..', 'src', 'smoke-device.cjs'), w.project.commands.apkGlob, 'com.demo.app', serial]);
+  assert.equal(last.env.ANDROID_SERIAL, serial);
+  assert.ok(last.env.PATH.split(path.delimiter)[0].startsWith(path.join(fs.realpathSync(w.dzHome), 'adb-wrappers')) || last.env.PATH.split(path.delimiter)[0].startsWith(path.join(w.dzHome, 'adb-wrappers')));
+  assert.throws(() => run({ serial: 'bad serial' }), /serial/);
+  assert.throws(() => prepare({ payload: { batchId: 'spec-7', worktree: w.repo, sha: SHA, smoke } }, { dzHome: w.dzHome, project: { ...w.project, excludedDevices: [serial] }, adb: '/usr/bin/true' }), /serial/);
+  const smoked = (ok = true) => ({ steps: [step('verify'), step('assemble'), step('smoke', ok)] });
+  w.apk('a.apk');
+  assert.equal((await w.judge(built, { smoke: true })).reason, 'kết quả không có bước smoke');
+  assert.equal((await w.judge(smoked(false), { smoke: true })).failedStep, 'smoke');
+  assert.equal((await w.judge(smoked(), { smoke: true })).ok, true);
+});

@@ -1,11 +1,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { specPrompt, PLUGIN_ROOT, HARNESS_SEGMENTS } = require('../specs/prompts.cjs');
+const { specPrompt } = require('../specs/prompts.cjs');
 const { figmaReadConfig, FIGMA_TOOLS } = require('../specs/figma-config.cjs');
 const { featureReviewPrompt, FEATURE_REVIEW_SCHEMA } = require('../specs/feature-review.cjs');
-const { writeAdbWrapper, SERIAL } = require('../devices.cjs');
 const { isolatedEnv, IDENTITY, NO_PUSH } = require('../bugs/prompts-env.cjs');
-const { checkWorkDir, bad } = require('../bugs/prompts-data.cjs');
+const { checkWorkDir } = require('../bugs/prompts-data.cjs');
 const { DENIED_COMMANDS, DENIED_TOOLS } = require('./bug.cjs');
 
 const ALLOWED = ['Bash', 'Read', 'Edit', 'Write', 'Glob', 'Grep', 'Agent', 'Skill', 'SendMessage', 'TaskCreate', 'TaskUpdate', 'TaskList', 'TaskGet', 'TaskStop', 'Monitor'];
@@ -21,15 +20,6 @@ function checkLock(dzHome, { serial, holder, specId }) {
     locks = JSON.parse(fs.readFileSync(path.join(dzHome, 'bug-fix-state', 'devices.json'), 'utf8'));
   } catch {}
   if (holder !== `spec:${specId}:run` || locks[serial]?.holder !== holder) throw new Error(`việc chạy thử không còn giữ khoá thiết bị ${serial}`);
-}
-
-function deviceEnv({ payload }, { dzHome, project, adb, deps }) {
-  if (payload.segment !== 'smoke') return {};
-  const { serial } = payload;
-  if (typeof serial !== 'string' || !SERIAL.test(serial) || (project.excludedDevices ?? []).includes(serial)) bad('serial');
-  (deps?.checkLock ?? checkLock)(dzHome, payload);
-  const wrapper = writeAdbWrapper({ dzHome, serial, adb });
-  return { ANDROID_SERIAL: serial, PATH: `${wrapper}${path.delimiter}${process.env.PATH}` };
 }
 
 function prepareReview(job, { dzHome, project }) {
@@ -52,10 +42,8 @@ function prepare(job, options) {
   const { payload } = job;
   if (payload.type === 'review') return prepareReview(job, options);
   const prompt = specPrompt(job);
-  const harness = HARNESS_SEGMENTS.includes(payload.segment);
-  const smoke = payload.segment === 'smoke';
-  const building = smoke || payload.segment === 'build';
-  const denied = building ? [...COMMANDS.filter(command => !(smoke && command === 'adb')), ...EMULATOR] : COMMANDS;
+  const building = payload.segment === 'build';
+  const denied = building ? [...COMMANDS, ...EMULATOR] : COMMANDS;
   return {
     prompt,
     resumePrompt: prompt,
@@ -64,14 +52,8 @@ function prepare(job, options) {
     allowedTools: [...ALLOWED, ...(payload.figma ? FIGMA_TOOLS : [])],
     disallowedTools: ['AskUserQuestion', ...denied.map(command => `Bash(${command}:*)`), ...(building ? OTHER_ADB : []), ...DENIED_TOOLS, `Read(/${dzHome}/secrets/**)`],
     mcpConfig: payload.figma ? figmaReadConfig(dzHome) : undefined,
-    pluginDirs: harness ? [] : [PLUGIN_ROOT],
-    env: {
-      ...isolatedEnv(dzHome, { config: NO_PUSH }),
-      ...IDENTITY,
-      ...(harness ? { HARNESS_HEADLESS: '1' } : { LEARN_APP_HEADLESS: '1', LEARN_APP_TRACKING: project.live === true ? null : 'off' }),
-      ...(smoke && { LEARN_APP_PARALLEL: String(Math.max(1, job.slotsGranted ?? 1)) }),
-      ...deviceEnv(job, options),
-    },
+    pluginDirs: [],
+    env: { ...isolatedEnv(dzHome, { config: NO_PUSH }), ...IDENTITY, HARNESS_HEADLESS: '1' },
   };
 }
 

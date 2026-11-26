@@ -1,9 +1,8 @@
 const files = require('./repo-files.cjs');
 const { parseQuestions } = require('./questions.cjs');
 const { mergeTriage } = require('./triage.cjs');
-const { redact, firstLine } = require('../redact.cjs');
+const { redact } = require('../redact.cjs');
 
-const GATES = { g1: /^cần PO duyệt cổng 1\b/, g3: /^cần PO duyệt cổng 3\b/ };
 const DEV = /preflight|token|quyền|đăng nhập|mcp|\b40[13]\b|cài|mạng|vpn|repo|gradle|google-services|keystore|sdk|quay lui/i;
 const PO = /\bPO\b|spec|thiết kế|design|figma|nội dung|góp ý/i;
 
@@ -19,22 +18,6 @@ function blockedOf(repo, name = 'blocked.json') {
 }
 
 const short = reason => ({ type: 'short', reason });
-
-async function atGate(run, repo, gate = 'g1') {
-  let out;
-  try {
-    out = await run.ctx.specs.runState(run.project, repo, ['next']);
-  } catch (error) {
-    return firstLine(error);
-  }
-  const { code, stdout, stderr } = out;
-  let missing = null;
-  try {
-    missing = JSON.parse(stdout).missing;
-  } catch {}
-  if (code === 2 && Array.isArray(missing) && missing.length === 1 && GATES[gate].test(missing[0])) return null;
-  return line(Array.isArray(missing) ? missing.join('; ') : stderr || `next trả mã ${code}`, 500);
-}
 
 function unseen(spec, md, modes = ['ask', 'auto']) {
   const shown = new Set((spec.data.rounds ?? []).flatMap(round => [...round.ask, ...round.auto]));
@@ -58,4 +41,4 @@ async function inspect(run) {
   return { type: 'clarified', md, latest };
 }
 
-module.exports = { inspect, blockedOf, atGate, line };
+module.exports = { inspect, blockedOf, line };

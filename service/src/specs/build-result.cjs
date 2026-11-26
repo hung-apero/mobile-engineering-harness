@@ -50,7 +50,12 @@ function readResult(repo) {
 
 const wantsChanges = result => CHANGES.test(result.review.verdict);
 
-async function resultProblem(run, git = runGit) {
+async function contains(repo, commit, tip, git) {
+  const found = await git(['merge-base', '--is-ancestor', commit, tip], { cwd: repo, okCodes: [0, 1] });
+  return found.code === 0;
+}
+
+async function resultProblem(run, { later = false, git = runGit } = {}) {
   const { repo } = run.spec.data;
   const result = readResult(repo);
   if (!result) return 'result.json không đọc được';
@@ -58,8 +63,9 @@ async function resultProblem(run, git = runGit) {
   if (result.branch !== branch) return `result.json ghi nhánh ${text(result.branch, 80)}, cần ${branch}`;
   await checkRepo(repo);
   if ((await headOf(repo, git)) !== branch) return `bản clone không ở nhánh ${branch}`;
-  if ((await tipOf(repo, branch, git)) !== result.commit) return `result.json ghi commit ${result.commit.slice(0, 12)} không phải đỉnh nhánh ${branch}`;
-  return null;
+  const tip = await tipOf(repo, branch, git);
+  if (tip === result.commit || (later && tip && (await contains(repo, result.commit, tip, git)))) return null;
+  return `result.json ghi commit ${result.commit.slice(0, 12)} không phải đỉnh nhánh ${branch}`;
 }
 
 module.exports = { branchOf, ensureBranch, progressOf, readResult, wantsChanges, resultProblem };

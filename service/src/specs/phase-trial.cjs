@@ -4,20 +4,9 @@ const { openItems, toBuilding } = require('./provisional.cjs');
 const { trialNotes } = require('./trial-notes.cjs');
 const { oneLine } = require('./answers.cjs');
 const { fresh } = require('./segment.cjs');
-const { move, patch, decide, once, openOnce, closeWaits, linkFor, nameOf } = require('./kit.cjs');
-const { buildOf, saveBuild, sendBack, state } = require('./build-kit.cjs');
+const { move, patch, decide, openOnce, closeWaits, linkFor, nameOf } = require('./kit.cjs');
+const { buildOf, saveBuild, sendBack } = require('./build-kit.cjs');
 const { firstLine } = require('../redact.cjs');
-
-async function recordGate3(run, { sha, quote }) {
-  await once(run, `g3-${sha}`, async () => {
-    try {
-      await state(run, ['approve', 'g3', '--quote', quote]);
-    } catch (error) {
-      decide(run, 'X08', 'spec-g3-not-recorded', { sha, error: firstLine(error) });
-    }
-    return { sha };
-  });
-}
 
 function approvalOf(run) {
   const { candidate, trial, published, pendingNotes } = buildOf(run);
@@ -25,9 +14,7 @@ function approvalOf(run) {
   return sha && sha === candidate?.sha && sha === trial.sha && sha === published?.sha ? trial.approved : null;
 }
 
-async function finishTrial(run) {
-  const approved = approvalOf(run);
-  await recordGate3(run, approved);
+function finishTrial(run) {
   closeWaits(run.db, run.spec.id, run.now, 'trial');
   move(run, 'landing', { data: fresh(run.spec, 'landing') });
   return { ok: true };
@@ -61,7 +48,7 @@ async function poTrial(run) {
     return false;
   }
   if (approvalOf(run) && !openItems(run.spec).length) {
-    await finishTrial(run);
+    finishTrial(run);
     return true;
   }
   const count = trialNotes(run.spec).length;

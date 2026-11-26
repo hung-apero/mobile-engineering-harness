@@ -5,6 +5,7 @@ const { quiz } = require('./phase-quiz.cjs');
 const { review, approved, commentDone } = require('./phase-review.cjs');
 const { waitingPrereq } = require('./prereq.cjs');
 const { advanceBuild } = require('./phase-build.cjs');
+const { smoking, smokeKey } = require('./phase-smoke.cjs');
 const { uidiff } = require('./phase-uidiff.cjs');
 const { reviewing } = require('./phase-code-review.cjs');
 const { candidate } = require('./phase-candidate.cjs');
@@ -29,7 +30,7 @@ function parked(run) {
 
 const PHASES = {
   new: start, reading: read, asking: advance, clarifying: advance, quiz, review, approved, parked,
-  'waiting-prereq': waitingPrereq, building: advanceBuild, smoking: advanceBuild, uidiff, reviewing, candidate,
+  'waiting-prereq': waitingPrereq, building: advanceBuild, smoking, uidiff, reviewing, candidate,
   'po-trial': poTrial, landing,
 };
 const STATES = Object.keys(PHASES);
@@ -38,6 +39,7 @@ const idle = (spec, project) => spec.state === 'approved' && (commentDone(spec, 
 
 function unsettled({ db, project, spec }) {
   if (!OWN_JOB.includes(spec.state)) return false;
+  if (spec.state === 'smoking' && findJob(db, { project: project.key, kind: 'build', key: smokeKey(spec) })) return true;
   return ['spec', 'uidiff'].some(kind => findJob(db, { project: project.key, kind, key: keyOf(spec) }));
 }
 

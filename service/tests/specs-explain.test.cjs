@@ -39,7 +39,7 @@ test('a follow-up More question carries the earlier exchange and asks for a shor
   assert.deepEqual(job.payload.history, [{ question: 'Dữ liệu lấy từ đâu?', answer: 'Từ CMS dev của app.' }]);
   const prompt = s.calls.at(-1).args.at(-1);
   assert.match(prompt, /<history>[\s\S]*Từ CMS dev của app\.[\s\S]*<\/history>/);
-  assert.match(prompt, /\.learn-app\/scout\.md/);
+  assert.match(prompt, /\.harness-run\/scout\.md/);
   assert.match(prompt, /Câu đầu tiên trả lời thẳng/);
   assert.doesNotMatch(prompt, /12 câu/);
 });

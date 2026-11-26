@@ -9,7 +9,8 @@ const { addQuestions, holdsInstall, toBuilding } = require('./provisional.cjs');
 const { pendingChange, askChange, noteSelfChange } = require('./change.cjs');
 const { fresh, keyOf, jobOf, again, stateOf } = require('./segment.cjs');
 const { move, decide, park, nameOf } = require('./kit.cjs');
-const { buildOf, saveBuild, saveNotes, learnState, batchIdOf, gitArgs, landingGit, sendBack, clip } = require('./build-kit.cjs');
+const { buildOf, saveBuild, saveNotes, batchIdOf, gitArgs, landingGit, sendBack, clip } = require('./build-kit.cjs');
+const { resultProblem } = require('./build-result.cjs');
 
 const HARD = ['forbidden', 'permission', 'secret'];
 const describe = problems => problems.map(p => `${p.code}${p.file ? ` ${p.file}` : ''}: ${p.detail}`).join('; ');
@@ -67,9 +68,9 @@ async function launch(run, candidate) {
 }
 
 async function start(run) {
-  const state = learnState(run.spec.data.repo);
-  if (state?.gates?.g1?.status !== 'approved' || state.step !== 'handoff') {
-    park(run, `trạng thái learn-app không còn ở chỗ bàn giao (${state?.step ?? 'không đọc được'})`);
+  const problem = await resultProblem(run, { later: true });
+  if (problem) {
+    park(run, `bản clone không còn ở chỗ bàn giao: ${problem}`);
     return true;
   }
   noteSelfChange(run);

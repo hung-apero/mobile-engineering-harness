@@ -153,6 +153,16 @@ function flow(s) {
     review: (result = REVIEW_OK) => finish(null, { event: { ...OK, result: '', structured_output: result } }),
     gate: (ok = true) => finish(null, { kind: 'gate', event: stepsEvent([step('compile'), step('unitTest', ok)]) }),
     build: (ok = true) => finish((dir, job) => ok && apk(job), { kind: 'build', event: job => stepsEvent([step('verify'), step('assemble', ok), ...(ok && job.payload.distribute ? [step('distribute')] : [])]) }),
+    smoke: (ok = true, { assemble = true } = {}) => finish((dir, job) => assemble && apk(job), { kind: 'build', event: () => stepsEvent([step('verify'), step('assemble', assemble), ...(assemble ? [step('smoke', ok)] : [])]) }),
+    toTrial: async (options = {}) => {
+      await api.code(options.code);
+      await api.smoke();
+      await api.review(options.review);
+      await api.gate();
+      await api.build();
+      await api.state('po-trial');
+      return spec().data.build.trial.sha;
+    },
     approveTrial: sha => s.facade.approve(s.id, { sha, quote: 'Tôi duyệt bản cài' }, 'po', s.now),
     headless: () => JSON.parse(fs.readFileSync(path.join(repo(), '.harness-run/inputs/headless.json'), 'utf8')),
     waits: () => ctx.db.prepare("SELECT role, subject, link FROM waits WHERE state = 'open' ORDER BY id").all(),

@@ -4,9 +4,9 @@ const { recordWould } = require('../bugs/effects.cjs');
 const { featureBranch, pushFeature, ensureDraftPr } = require('./publish-feature.cjs');
 const { fixRound, onHold } = require('./phase-code-review.cjs');
 const { stateOf, fresh } = require('./segment.cjs');
-const { move, decide, once, park, findJob, nameOf } = require('./kit.cjs');
-const { buildOf, saveBuild, batchIdOf, gitArgs, landingGit, state } = require('./build-kit.cjs');
-const { trialNotes } = require('./trial-notes.cjs');
+const { move, decide, once, park, findJob } = require('./kit.cjs');
+const { buildOf, saveBuild, batchIdOf, gitArgs, landingGit } = require('./build-kit.cjs');
+const { prText } = require('./pr-text.cjs');
 
 const UNKNOWN = 'không rõ Firebase đã nhận bản cài chưa, cần người kiểm rồi gửi tay nếu thiếu';
 const keyOf = (run, name) => `${batchIdOf(run.spec)}#${name}-${run.spec.data.serial}`;
@@ -56,19 +56,17 @@ async function built(run) {
   return { stop: true };
 }
 
-function prBody(run, text) {
-  const notes = trialNotes(run.spec);
-  const head = notes.length ? ['## Còn lệch hoặc chờ xác nhận', ...notes.map(note => `- ${note}`), ''] : [];
-  return [...head, text, '', `dz-spec-${run.spec.id}`].join('\n');
-}
-
 async function publish(run) {
   const { candidate } = buildOf(run);
   const mode = run.live ? 'live' : 'dry';
   const branch = featureBranch({ project: run.project, id: run.spec.id });
-  const prepared = await once(run, `handoff-${candidate.sha}`, async () => JSON.parse(await state(run, ['handoff', '--base', run.project.base], { headless: true })));
+  const text = await once(run, `pr-text-${candidate.sha}`, () => {
+    const made = prText(run);
+    decide(run, 'F03', 'spec-pr-text', { sha: candidate.sha, ...made });
+    return made;
+  });
   await once(run, `${mode}-push-${candidate.sha}`, () => pushFeature(gitArgs(run, { branch, sha: candidate.sha })));
-  return once(run, `${mode}-pr-${candidate.sha}`, () => ensureDraftPr(gitArgs(run, { branch, title: `${prepared.title}: ${nameOf(run.spec)}`, body: prBody(run, prepared.body), gh: run.ctx.bugs.gh })));
+  return once(run, `${mode}-pr-${candidate.sha}`, () => ensureDraftPr(gitArgs(run, { branch, title: text.title, body: text.body, gh: run.ctx.bugs.gh })));
 }
 
 async function distribute(run) {

@@ -3,22 +3,22 @@ const path = require('node:path');
 const { runGit, check, pathsFor, checkBase, refSha, isAncestor, requireRef, GitError, LANE, SHA } = require('../bugs/git.cjs');
 const { makeTmp } = require('../bugs/publish.cjs');
 const { checkRepo } = require('./wire.cjs');
+const { DIR } = require('./repo-files.cjs');
 
-const DIR = '.learn-app';
-const FORBIDDEN = ['.learn-app', '.learn-app/**', '**/.learn-app/**'];
+const FORBIDDEN = [DIR, `${DIR}/**`, `**/${DIR}/**`];
 const MAX_LINES = 20000;
-const INTEGRATION = /^learn-app\/[a-z0-9][a-z0-9-]*$/;
+const INTEGRATION = /^dz\/spec-[1-9]\d{0,14}$/;
 
 const out = async promise => (await promise).stdout.trim();
 
 async function commitLeftovers({ repo, git = runGit }) {
   await checkRepo(repo);
   const branch = await out(git(['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: repo }));
-  if (!INTEGRATION.test(branch)) throw new GitError(`bản clone không ở nhánh learn-app: ${branch}`, 'INVALID');
+  if (!INTEGRATION.test(branch)) throw new GitError(`bản clone không ở nhánh dz/spec-<id>: ${branch}`, 'INVALID');
   const paths = ['--', '.', `:(exclude)${DIR}`];
   if (await out(git(['status', '--porcelain', ...paths], { cwd: repo }))) {
     await git(['add', '-A', ...paths], { cwd: repo });
-    await git(['commit', '-q', '--no-verify', '-m', 'learn-app: code còn lại', ...paths], { cwd: repo });
+    await git(['commit', '-q', '--no-verify', '-m', 'chore: leftover changes', ...paths], { cwd: repo });
   }
   return check(SHA, await out(git(['rev-parse', 'HEAD'], { cwd: repo })), 'HEAD');
 }
@@ -26,7 +26,7 @@ async function commitLeftovers({ repo, git = runGit }) {
 async function fetchHead({ mirror, repo, id, head, git }) {
   const ref = `refs/dz/spec-${id}`;
   await git(['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', '--no-recurse-submodules', '--', repo, `+HEAD:${ref}`], { gitDir: mirror });
-  if ((await refSha(git, mirror, ref)) !== head) throw new GitError('nhánh learn-app vừa đổi trong lúc lấy code', 'MOVED');
+  if ((await refSha(git, mirror, ref)) !== head) throw new GitError('nhánh của spec vừa đổi trong lúc lấy code', 'MOVED');
 }
 
 async function startOf({ mirror, base, versionBranch, head, git }) {

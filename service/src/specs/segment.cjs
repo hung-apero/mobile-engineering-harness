@@ -11,7 +11,6 @@ const WAITING = ['queued', 'starting', 'running'];
 const NAMES = {
   asking: 'ask', clarifying: 'clarify', building: 'build', smoking: 'smoke', uidiff: 'uidiff', reviewing: 'review', candidate: 'candidate', landing: 'landing',
 };
-const LEARN_SEGMENTS = { smoke: 'build' };
 
 const fresh = (spec, name, tries = 1) => {
   const serial = (spec.data.serial ?? 0) + 1;
@@ -26,7 +25,7 @@ function writeConfig(run, slots) {
   const rework = reworkOf(run.spec).map(item => item.file);
   writeRework(run);
   const build = segment.name === 'build' ? { slots, branch: branchOf(run.spec) } : {};
-  const config = { spec: 'inputs/spec-v1.md', figma: figmaUrl ? { url: figmaUrl } : null, app, case: 'existing', segment: LEARN_SEGMENTS[segment.name] ?? segment.name, ...(notes && { notes }), ...(rework.length && { rework }), ...build };
+  const config = { spec: 'inputs/spec-v1.md', figma: figmaUrl ? { url: figmaUrl } : null, app, case: 'existing', segment: segment.name, ...(notes && { notes }), ...(rework.length && { rework }), ...build };
   files.write(repo, 'inputs/headless.json', `${JSON.stringify(config, null, 1)}\n`);
   files.remove(repo, 'blocked.json');
   files.remove(repo, 'headless-blocked.json');

@@ -14,14 +14,16 @@ const { firstLine } = require('../redact.cjs');
 const ROUNDS = 3;
 const MAX_SCREENS = 60;
 
+const text = (value, max) => String(value ?? '').replace(/[\p{C}\s]+/gu, ' ').trim().slice(0, max).toWellFormed();
+
 function screensOf(repo) {
-  const dir = path.join(repo, '.learn-app', 'figma');
+  const dir = path.join(repo, files.DIR, 'figma');
   if (!fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory()) return [];
   const slugs = fs.readdirSync(dir).filter(name => name.endsWith('.json')).map(name => name.slice(0, -5)).filter(slug => SLUG.test(slug)).sort();
-  return slugs.filter(slug => {
-    const digest = files.readJson(repo, `figma/${slug}.json`);
-    return digest && (digest.kind ?? 'screen') === 'screen';
-  }).slice(0, MAX_SCREENS).map(slug => ({ slug, deepLink: `learnapp-debug://screen/${slug}` }));
+  return slugs.map(slug => ({ slug, digest: files.readJson(repo, `figma/${slug}.json`) }))
+    .filter(({ digest }) => digest && (digest.kind ?? 'screen') === 'screen')
+    .slice(0, MAX_SCREENS)
+    .map(({ slug, digest }) => ({ slug, name: text(digest.name, 120) || slug, node: text(digest.node, 40) }));
 }
 
 const jobOf = run => findJob(run.db, { project: run.project.key, kind: 'uidiff', key: keyOf(run.spec) });
