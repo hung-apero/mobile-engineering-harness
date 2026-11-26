@@ -2,8 +2,8 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const S = require('../vendor/learn-app/lib/learn-app-state.cjs');
-const { refreshBuilding } = require('../src/spec-build-commands.cjs');
+const S = require('../../vendor/learn-app/lib/learn-app-state.cjs');
+const { refreshBuilding } = require('../../src/spec-build-commands.cjs');
 const { setupBuild, coded, editState, g, put, PLAN, REVIEW_OK } = require('./specs-build-fixtures.cjs');
 
 const FEATURE = { id: 'path', source: 'app', status: 'done', files: [], gaps: [], decisions: [] };

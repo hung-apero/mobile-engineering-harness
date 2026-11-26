@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { parsePrereqs, suggestPrereqs } = require('../src/specs/prereq.cjs');
-const { validSpec } = require('../src/spec-commands.cjs');
+const { parsePrereqs, suggestPrereqs } = require('../../src/specs/prereq.cjs');
+const { validSpec } = require('../../src/spec-commands.cjs');
 const { setupBuild, VERSION } = require('./specs-build-fixtures.cjs');
 
 const MIN = 60000;
@@ -78,7 +78,7 @@ test('the text of the spec only gives suggestions, and the list can be changed o
 test('a changed clarified spec stops the build before any code is written', async t => {
   const s = setupBuild(t);
   await s.toApproved();
-  require('./specs-flow-fixtures.cjs').put(s.repo(), { 'inputs/spec-v3.md': '# Spec khác\n' });
+  require('../specs-flow-fixtures.cjs').put(s.repo(), { 'inputs/spec-v3.md': '# Spec khác\n' });
   await s.cmd('build', String(s.id), '--version', VERSION);
   await s.tick();
   assert.equal(s.spec().state, 'parked');

@@ -2,8 +2,8 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const S = require('../vendor/learn-app/lib/learn-app-state.cjs');
-const { parseFeatureReview } = require('../src/specs/feature-review.cjs');
+const S = require('../../vendor/learn-app/lib/learn-app-state.cjs');
+const { parseFeatureReview } = require('../../src/specs/feature-review.cjs');
 const { setupBuild, REVIEW_OK, commit, coded, smoked, g } = require('./specs-build-fixtures.cjs');
 
 const changes = text => ({ ...REVIEW_OK, verdict: 'changes', findings: [{ file: 'feature.txt', line: 1, severity: 'major', text }] });

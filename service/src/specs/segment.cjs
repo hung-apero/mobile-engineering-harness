@@ -25,6 +25,7 @@ function writeConfig(run) {
   writeRework(run);
   const config = { spec: 'inputs/spec-v1.md', figma: figmaUrl ? { url: figmaUrl } : null, app, case: 'existing', segment: LEARN_SEGMENTS[segment.name] ?? segment.name, ...(notes && { notes }), ...(rework.length && { rework }) };
   files.write(repo, 'inputs/headless.json', `${JSON.stringify(config, null, 1)}\n`);
+  files.remove(repo, 'blocked.json');
   files.remove(repo, 'headless-blocked.json');
 }
 
@@ -33,6 +34,7 @@ function launch(run, { slots = 1, extra = {} } = {}) {
   writeConfig(run);
   const rework = reworkOf(run.spec);
   const payload = { specId: run.spec.id, segment: segment.name, repo, figma: Boolean(figmaUrl), ...(rework.length && { rework }), ...extra };
+  patch(run, { segment: { ...run.spec.data.segment, inputsSha: files.inputsSha(repo) } });
   jobs.enqueue(run.db, { project: run.project.key, kind: 'spec', key: keyOf(run.spec), priority: 1, slots, payload }, run.now);
 }
 

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { setupBuild, coded, smoked, put, SMOKE, SERIAL, OK } = require('./specs-build-fixtures.cjs');
-const { readSmoke } = require('../src/specs/smoke-report.cjs');
+const { readSmoke } = require('../../src/specs/smoke-report.cjs');
 
 const MIN = 60000;
 const FIGMA = 'https://www.figma.com/design/abc123/App';

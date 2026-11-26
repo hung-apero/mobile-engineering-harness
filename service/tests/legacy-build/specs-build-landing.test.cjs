@@ -1,8 +1,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const bugs = require('../src/bugs/store.cjs');
-const hooks = require('../src/specs/release-hooks.cjs');
-const S = require('../vendor/learn-app/lib/learn-app-state.cjs');
+const bugs = require('../../src/bugs/store.cjs');
+const hooks = require('../../src/specs/release-hooks.cjs');
+const S = require('../../vendor/learn-app/lib/learn-app-state.cjs');
 const { setupBuild, commit, coded, g, VERSION } = require('./specs-build-fixtures.cjs');
 const { BRANCH, bugLane, tip, inLanding, drain, toLanding } = require('./specs-landing-fixtures.cjs');
 

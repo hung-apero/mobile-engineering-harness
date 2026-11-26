@@ -165,4 +165,4 @@ async function ensureClone({ dzHome, project, batch, sha, git = runGit }) {
   return { repo, startSha: fs.readFileSync(startFile, 'utf8').trim() };
 }
 
-module.exports = { versionBranch, ensureMirror, ensureVersionBranch, ensureClone, linkHarness, linkOverlay, FEATURE_AGENTS };
+module.exports = { versionBranch, ensureMirror, ensureVersionBranch, ensureClone, linkHarness, linkOverlay, excludeLines, FEATURE_AGENTS };

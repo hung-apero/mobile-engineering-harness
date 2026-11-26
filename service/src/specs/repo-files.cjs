@@ -2,7 +2,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const DIR = '.learn-app';
+const DIR = '.harness-run';
 const MAX = 4 * 1024 * 1024;
 const { O_RDONLY, O_NOFOLLOW, O_NONBLOCK } = fs.constants;
 
@@ -56,14 +56,33 @@ function readJson(repo, rel) {
   }
 }
 
+const specPath = version => (version === 1 ? 'inputs/spec-v1.md' : `clarified/spec-v${version}.md`);
+
+function clarifiedVersions(repo) {
+  const probe = realParent(repo, 'clarified/x');
+  if (!probe || !fs.existsSync(path.dirname(probe))) return [];
+  return fs.readdirSync(path.dirname(probe)).map(name => name.match(/^spec-v(\d{1,6})\.md$/)?.[1]).filter(Boolean).map(Number).filter(n => n >= 2);
+}
+
 function specVersions(repo) {
+  const first = read(repo, specPath(1)) === null ? [] : [1];
+  return [...first, ...clarifiedVersions(repo)].sort((a, b) => a - b);
+}
+
+function inputsSha(repo) {
   const probe = realParent(repo, 'inputs/x');
-  if (!probe) return [];
-  return fs.readdirSync(path.dirname(probe)).map(name => name.match(/^spec-v(\d{1,6})\.md$/)?.[1]).filter(Boolean).map(Number).sort((a, b) => a - b);
+  if (!probe || !fs.existsSync(path.dirname(probe))) return sha256('');
+  const walk = dir => fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name)).flatMap(entry => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return walk(full);
+    const rel = path.relative(path.dirname(probe), full);
+    return [`${rel}\0${entry.isSymbolicLink() ? `->${fs.readlinkSync(full)}` : fs.readFileSync(full, 'utf8')}`];
+  });
+  return sha256(walk(path.dirname(probe)).join('\0\0'));
 }
 
 function specAt(repo, version) {
-  const markdown = read(repo, `inputs/spec-v${version}.md`);
+  const markdown = read(repo, specPath(version));
   return markdown === null ? null : { version, markdown, sha: sha256(markdown) };
 }
 
@@ -72,4 +91,4 @@ function latestSpec(repo) {
   return version === undefined ? null : specAt(repo, version);
 }
 
-module.exports = { read, write, remove, readJson, specVersions, specAt, latestSpec, sha256 };
+module.exports = { DIR, read, write, remove, readJson, specVersions, specAt, latestSpec, inputsSha, specPath, sha256 };

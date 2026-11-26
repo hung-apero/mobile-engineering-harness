@@ -4,8 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const store = require('../src/specs/store.cjs');
 const { parseQuestions } = require('../src/specs/questions.cjs');
-const S = require('../vendor/learn-app/lib/learn-app-state.cjs');
-const { setup, asked, clarified, put, stateAt, g, QUESTIONS, Q4, TRIAGE } = require('./specs-flow-fixtures.cjs');
+const { setup, asked, clarified, put, QUESTIONS, Q4, TRIAGE } = require('./specs-flow-fixtures.cjs');
 
 const tokenOf = link => link.split('/').at(-1);
 
@@ -16,9 +15,9 @@ test('a spec goes new to approved through quiz and review with the real state co
   await s.until(() => s.calls.length === 1);
   const { args, env, cwd } = s.calls[0];
   assert.equal(cwd, s.repo());
-  assert.equal(env.LEARN_APP_HEADLESS, '1');
-  assert.equal(env.LEARN_APP_TRACKING, 'off');
-  assert.match(args.at(-1), /đoạn ask\. Bắt đầu bằng: node ".*\/bin\/learn-app-state\.cjs" headless-start/);
+  assert.equal(env.HARNESS_HEADLESS, '1');
+  assert.deepEqual([env.LEARN_APP_HEADLESS, env.LEARN_APP_TRACKING], [undefined, undefined]);
+  assert.match(args.at(-1), /đoạn ask\b[\s\S]*skill feature[\s\S]*headless_check\.py ask \./);
   assert.deepEqual(JSON.parse(s.read('inputs/headless.json')), { spec: 'inputs/spec-v1.md', figma: null, app: 'ABC1', case: 'existing', segment: 'ask' });
 
   await s.toQuiz();
@@ -48,9 +47,7 @@ test('a spec goes new to approved through quiz and review with the real state co
   assert.deepEqual(await s.facade.approve(s.id, { sha: review.sha, quote: 'Tôi duyệt "bản" này' }, 'po', s.now), { ok: true });
   const spec = s.spec();
   assert.deepEqual([spec.state, spec.approvedSha, s.waits().length], ['approved', review.sha, 0]);
-  assert.equal(S.readState(s.repo()).gates.g1.status, 'approved');
-  assert.match(s.read('gates/approvals.md'), /g1 · PO: "Tôi duyệt ”bản” này"/);
-  assert.equal(g(s.repo(), 'log', '-1', '--format=%s'), 'learn-app: g1 approved');
+  assert.deepEqual(JSON.parse(s.read('inputs/approval.json')), { sha: review.sha, by: 'po', at: s.now });
   await assert.rejects(s.facade.approve(s.id, { sha: review.sha, quote: 'Duyệt' }, 'po', s.now), { code: 'STATE' });
 });
 
@@ -60,7 +57,7 @@ test('a new blocking question after the answers opens round 2 with only the new 
   s.answer();
   await s.finish(repo => {
     const md = s.read('questions.md');
-    asked(repo, `${md}\n${Q4}`, { items: [{ id: 'Q4', decision: 'auto', label: 'A', source: 's', reason: 'r', category: 'evidence' }] });
+    asked(repo, `${md}\n${Q4}`, { items: [{ id: 'Q3', decision: 'ask', reason: 'x', category: 'unclear' }, { id: 'Q4', decision: 'auto', label: 'A', source: 's', reason: 'r', category: 'evidence' }] });
   });
   const spec = s.spec();
   assert.deepEqual([spec.state, spec.round], ['quiz', 2]);
@@ -106,14 +103,14 @@ test('approve is refused as stale when the spec changed, and the PO gets the new
   const s = setup(t);
   await s.toReview();
   const { sha } = s.facade.review(s.id);
-  put(s.repo(), { 'inputs/spec-v2.md': '# Spec đổi Q1 Q2 — Agent tự chốt Q3 Q4\n' });
+  clarified(s.repo(), 3, '# Spec đổi Q1 Q2 Q3 Q4\n');
   await assert.rejects(s.facade.approve(s.id, { sha, quote: 'Duyệt' }, 'po', s.now), { code: 'STALE' });
   await assert.rejects(s.facade.approve(s.id, { sha: s.facade.review(s.id).sha, quote: 'Duyệt' }, 'po', s.now), { code: 'STALE' });
   await s.tick();
   assert.equal(s.spec().specSha, s.facade.review(s.id).sha);
   assert.equal(s.waits().length, 1);
   await assert.rejects(s.facade.approve(s.id, { sha, quote: 'Duyệt nhưng đổi màu' }, 'po', s.now), { code: 'INVALID' });
-  assert.equal(S.readState(s.repo()).gates.g1.status, 'pending');
+  assert.equal(fs.existsSync(path.join(s.repo(), '.harness-run', 'inputs', 'approval.json')), false);
 });
 
 test('feedback sends the notes to another clarify and needs a newer spec version', async t => {
@@ -156,15 +153,15 @@ test('a worker that writes the PO answer or approves the gate is caught', async 
   assert.equal(out.ok, false);
   assert.equal(s.spec().state, 'clarifying');
   assert.deepEqual(parseQuestions(s.read('questions.md')).map(q => q.id).sort(), ['Q1', 'Q2', 'Q3']);
-  await s.finish(repo => { const state = S.readState(repo); state.gates.g1 = { status: 'approved' }; S.writeState(repo, state); });
-  assert.deepEqual([s.spec().state, /cổng 1/.test(s.spec().data.parked.reason)], ['parked', true]);
+  await s.finish(repo => put(repo, { 'inputs/approval.json': { sha: 'x', by: 'po' } }));
+  assert.deepEqual([s.spec().state, /inputs/.test(s.spec().data.parked.reason)], ['parked', true]);
 });
 
 test('the questions file is never read or written through a symlink', async t => {
   const s = setup(t);
   const secret = path.join(s.ctx.secretsDir, 'x');
   fs.writeFileSync(secret, 'BIMAT', { mode: 0o600 });
-  await s.finish(repo => { stateAt(repo, 'clear'); fs.symlinkSync(secret, path.join(repo, '.learn-app', 'questions.md')); });
+  await s.finish(repo => { put(repo, { 'triage.json': { items: [] } }); fs.symlinkSync(secret, path.join(repo, '.harness-run', 'questions.md')); });
   assert.equal(s.spec().state, 'asking');
   await s.finish();
   assert.equal(s.spec().state, 'parked');

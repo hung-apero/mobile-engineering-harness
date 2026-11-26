@@ -2,10 +2,10 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const S = require('../vendor/learn-app/lib/learn-app-state.cjs');
-const store = require('../src/specs/store.cjs');
-const { changedSections } = require('../src/specs/change.cjs');
-const { refreshBuilding } = require('../src/spec-build-commands.cjs');
+const S = require('../../vendor/learn-app/lib/learn-app-state.cjs');
+const store = require('../../src/specs/store.cjs');
+const { changedSections } = require('../../src/specs/change.cjs');
+const { refreshBuilding } = require('../../src/spec-build-commands.cjs');
 const { setupBuild, coded, smoked, put, VERSION } = require('./specs-build-fixtures.cjs');
 
 const PLANS = ['01-path', '02-quiz'];

@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const store = require('../src/specs/store.cjs');
-const { validSpec } = require('../src/spec-commands.cjs');
+const store = require('../../src/specs/store.cjs');
+const { validSpec } = require('../../src/spec-commands.cjs');
 const { setupBuild, VERSION } = require('./specs-build-fixtures.cjs');
 
 test('build needs an approved spec, a version and an open version', async t => {

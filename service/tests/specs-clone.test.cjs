@@ -4,8 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { g, commit, world } = require('./bugs-git-fixtures.cjs');
 const { prepareSpecClone } = require('../src/specs/clone.cjs');
-const { validateSpecSource } = require('../vendor/learn-app/lib/spec-source.cjs');
-const { specVersions } = require('../vendor/learn-app/lib/looper-parse.cjs');
+const files = require('../src/specs/repo-files.cjs');
 
 const figma = 'https://www.figma.com/design/AbC123xyz/Demo';
 const source = { type: 'url', ref: 'https://wiki.example/pages/9/x' };
@@ -18,7 +17,8 @@ function ready(t) {
   return w;
 }
 const base = w => ({ dzHome: w.dzHome, project: w.project, githubUrl: w.github, specId: 'sp1', markdown: '# spec\r\nv1  \r\n', source, figma });
-const input = (repo, name) => path.join(repo, '.learn-app', 'inputs', name);
+const run = (repo, name) => path.join(repo, '.harness-run', name);
+const input = (repo, name) => run(repo, path.join('inputs', name));
 
 test('the clone sits at workspaces/<KEY>/specs/<id>/repo on the base branch with inputs written', async t => {
   const w = ready(t);
@@ -28,11 +28,8 @@ test('the clone sits at workspaces/<KEY>/specs/<id>/repo on the base branch with
   assert.equal(g(repo, 'rev-parse', '--abbrev-ref', 'HEAD'), 'develop');
   assert.equal(g(repo, 'rev-parse', 'HEAD'), g(w.dev, 'rev-parse', 'HEAD'));
   assert.equal(fs.readFileSync(input(repo, 'spec-v1.md'), 'utf8'), '# spec\nv1\n');
-  assert.deepEqual(JSON.parse(fs.readFileSync(input(repo, 'spec-source.json'), 'utf8')), source);
-  assert.deepEqual(validateSpecSource(JSON.parse(fs.readFileSync(input(repo, 'spec-source.json'), 'utf8'))), []);
-  assert.deepEqual(JSON.parse(fs.readFileSync(input(repo, 'figma-url.json'), 'utf8')), { url: figma, fileKey: 'AbC123xyz' });
-  assert.equal(fs.existsSync(input(repo, 'no-design')), false);
-  assert.equal(g(repo, 'status', '--porcelain'), '?? .learn-app/');
+  assert.deepEqual(fs.readdirSync(run(repo, 'inputs')), ['spec-v1.md']);
+  assert.equal(g(repo, 'status', '--porcelain'), '');
 });
 
 test('the spec clone links harness skills and the feature agents, hidden from git', async t => {
@@ -42,7 +39,7 @@ test('the spec clone links harness skills and the feature agents, hidden from gi
   assert.equal(fs.readlinkSync(path.join(claude, 'skills', 'feature')), path.join(w.harness, 'skills', 'feature'));
   assert.equal(fs.readlinkSync(path.join(claude, 'skills', 'spec-clear')), path.join(w.harness, 'skills', 'spec-clear'));
   assert.deepEqual(fs.readdirSync(path.join(claude, 'agents')).sort(), ['architect.md', 'coder.md', 'qa.md', 'reviewer.md']);
-  assert.equal(g(repo, 'status', '--porcelain'), '?? .learn-app/');
+  assert.equal(g(repo, 'status', '--porcelain'), '');
 });
 
 test('the project overlay is copied and upstream points at the pinned harness', async t => {
@@ -65,37 +62,35 @@ test('a missing or symlinked overlay is refused with OVERLAY', async t => {
   await assert.rejects(prepareSpecClone({ ...base(w), specId: 'sp9' }), { code: 'OVERLAY' });
 });
 
-test('no figma writes inputs/no-design instead of a figma link', async t => {
+test('no figma writes only the spec, figma travels in headless.json', async t => {
   const w = ready(t);
   const { repo } = await prepareSpecClone({ ...base(w), figma: null });
-  assert.equal(fs.existsSync(input(repo, 'no-design')), true);
-  assert.equal(fs.existsSync(input(repo, 'figma-url.json')), false);
+  assert.deepEqual(fs.readdirSync(run(repo, 'inputs')), ['spec-v1.md']);
 });
 
-test('a second run keeps the clone and its work and never writes a second spec version', async t => {
+test('a second run keeps the clone and its work, and a changed source is refused once a clarified spec exists', async t => {
   const w = ready(t);
   const first = await prepareSpecClone(base(w));
   fs.writeFileSync(path.join(first.repo, 'worker.txt'), 'wip');
-  fs.mkdirSync(path.join(first.repo, '.git', 'info'), { recursive: true });
-  fs.writeFileSync(path.join(first.repo, '.git', 'info', 'exclude'), '/.learn-app/\nx\n');
-  fs.writeFileSync(input(first.repo, 'spec-v2.md'), 'đã làm rõ');
-  await prepareSpecClone(base(w));
-  assert.deepEqual(specVersions(first.repo), [1, 2]);
-  assert.equal(fs.readFileSync(path.join(first.repo, 'worker.txt'), 'utf8'), 'wip');
-  assert.doesNotMatch(fs.readFileSync(path.join(first.repo, '.git', 'info', 'exclude'), 'utf8'), /learn-app/);
   await prepareSpecClone({ ...base(w), markdown: '# spec\nv1 sửa\n' });
   assert.equal(fs.readFileSync(input(first.repo, 'spec-v1.md'), 'utf8'), '# spec\nv1 sửa\n');
-  fs.writeFileSync(path.join(first.repo, '.learn-app', 'state.json'), '{}');
+  fs.mkdirSync(run(first.repo, 'clarified'));
+  fs.writeFileSync(run(first.repo, 'clarified/spec-v2.md'), 'đã làm rõ');
+  await prepareSpecClone({ ...base(w), markdown: '# spec\nv1 sửa\n' });
+  assert.deepEqual(files.specVersions(first.repo), [1, 2]);
+  assert.equal(fs.readFileSync(path.join(first.repo, 'worker.txt'), 'utf8'), 'wip');
   await assert.rejects(prepareSpecClone(base(w)), error => error.code === 'CHANGED');
-  assert.equal(fs.readFileSync(input(first.repo, 'spec-v2.md'), 'utf8'), 'đã làm rõ');
+  assert.equal(fs.readFileSync(run(first.repo, 'clarified/spec-v2.md'), 'utf8'), 'đã làm rõ');
+  assert.equal(fs.readFileSync(path.join(first.repo, '.git', 'info', 'exclude'), 'utf8').split('\n').filter(line => line === '.harness-run/').length, 1);
 });
 
-test('a .learn-app already committed on the base branch is not carried into a new run', async t => {
+test('a .harness-run already committed on the base branch is not carried into a new run', async t => {
   const w = ready(t);
-  commit(w.dev, { '.learn-app/state.json': '{"step":"handoff"}', '.learn-app/questions.md': 'cũ' });
+  commit(w.dev, { '.harness-run/questions.md': 'cũ', '.harness-run/inputs/approval.json': '{}' });
   g(w.dev, 'push', '-q', 'origin', 'develop');
   const { repo } = await prepareSpecClone(base(w));
-  assert.deepEqual(fs.readdirSync(path.join(repo, '.learn-app')), ['inputs']);
+  assert.deepEqual(fs.readdirSync(run(repo, '')), ['inputs']);
+  assert.deepEqual(fs.readdirSync(run(repo, 'inputs')), ['spec-v1.md']);
 });
 
 test('the clone is taken from the mirror, so a later base commit shows up only in a new spec clone', async t => {

@@ -8,8 +8,10 @@ const { recordWould } = require('../bugs/effects.cjs');
 const { runGit } = require('../bugs/git.cjs');
 const { isolatedEnv, IDENTITY } = require('../bugs/prompts-env.cjs');
 const { workerEnv, applyEnv } = require('../worker-env.cjs');
+const { firstLine } = require('../redact.cjs');
 
 const TIMEOUT_MS = 2 * 60 * 1000;
+const CHECK_TIMEOUT_MS = 60 * 1000;
 const MAX_BUFFER = 16 * 1024 * 1024;
 const GIT_CONFIG = [['core.hooksPath', '/dev/null'], ['core.fsmonitor', 'false'], ['commit.gpgSign', 'false'], ['core.attributesFile', '/dev/null']];
 const KNOWN_CONFIG = /^(?:core\.(?:repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode)|remote\.origin\.(?:url|fetch|tagopt)|branch\..+\.(?:remote|merge)|user\.(?:name|email))$/i;
@@ -26,7 +28,7 @@ function stateEnv(ctx, project, headless) {
   return applyEnv(workerEnv(ctx.env, ctx.dzHome), overrides);
 }
 
-function createSpecs(ctx, { connect, cli = STATE_CLI } = {}) {
+function createSpecs(ctx, { connect, cli = STATE_CLI, checker = null, python = 'python3' } = {}) {
   const adapters = new Map();
   return {
     busy: new Set(),
@@ -40,6 +42,22 @@ function createSpecs(ctx, { connect, cli = STATE_CLI } = {}) {
         adapters.set(id, createConfluence({ configFile, live, record: recordWould(ctx, project), connect }));
       }
       return adapters.get(id);
+    },
+    async check(project, repo, segment) {
+      await checkRepo(repo);
+      const script = checker ?? path.join(ctx.dzHome, 'harness', 'skills', 'feature', 'scripts', 'headless_check.py');
+      return new Promise((resolve, reject) => {
+        execFile(python, [script, segment, repo], { cwd: repo, env: stateEnv(ctx, project, false), timeout: CHECK_TIMEOUT_MS, maxBuffer: MAX_BUFFER, encoding: 'utf8' }, (error, stdout, stderr) => {
+          const code = error ? error.code : 0;
+          if (code !== 0 && code !== 2) return reject(new Error(`headless_check lỗi: ${firstLine(stderr || error?.message || String(code))}`));
+          try {
+            const out = JSON.parse(stdout);
+            resolve({ ok: out.ok === true, problems: Array.isArray(out.problems) ? out.problems.map(String) : [], blocked: out.blocked ?? null });
+          } catch {
+            reject(new Error('headless_check trả kết quả không phải JSON'));
+          }
+        });
+      });
     },
     async runState(project, repo, args, { headless = false } = {}) {
       await checkRepo(repo);

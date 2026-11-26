@@ -127,12 +127,12 @@ test('dry run: only local commands, no Discord, no Confluence write, no push', a
   await approve(s);
   await s.tick(10 * 3600000);
   assert.deepEqual(s.sends, []);
-  assert.deepEqual([...new Set(ran)].sort(), ['approve', 'next', 'status']);
+  assert.deepEqual(ran, []);
   for (const { args, env } of s.calls) {
     assert.ok(args.includes('Bash(git push:*)'));
     assert.ok(args.includes('AskUserQuestion'));
     assert.equal(args.includes('--mcp-config'), false);
-    assert.equal(env.LEARN_APP_TRACKING, 'off');
+    assert.equal(env.HARNESS_HEADLESS, '1');
     assert.equal(env.GIT_SSH_COMMAND, '/usr/bin/false');
     assert.equal(Object.keys(env).some(name => /^(?:LEARN_APP_)?DISCORD_|GH_TOKEN|JIRA_API/.test(name)), false);
   }

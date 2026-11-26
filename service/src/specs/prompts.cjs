@@ -15,9 +15,15 @@ const BUILD_RULES = [
 const CODE_RULE = '- Dịch vụ chưa cấp thiết bị: không dùng adb hay máy ảo, không gọi smoke-tester. Khi `state status` báo step là smoke thì `state headless-block --reason "chờ dịch vụ cấp thiết bị"` rồi dừng lượt.';
 const smokeRule = serial => `- Thiết bị duy nhất là ${serial}, đã khoá cho việc này. Mọi lệnh adb có "-s ${serial}"; không chạy \`adb devices\`, không bật hay tạo máy ảo, không đụng máy khác. Truyền nguyên văn dòng này cho smoke-tester; dòng "Máy:" của smoke/report.md phải ghi ${serial}. Máy không dùng được thì ghi report blocked.`;
 
+const HARNESS_SEGMENTS = ['ask', 'clarify'];
+const CHECKER = '.claude/skills/feature/scripts/headless_check.py';
+
+const harnessPrompt = segment => `Chạy không người (HARNESS_HEADLESS=1), đoạn ${segment}. Gọi skill feature, làm đúng skills/feature/references/headless.md tới chỗ dừng của đoạn. Đầu vào: .harness-run/inputs/headless.json. Trước khi thoát chạy: python3 ${CHECKER} ${segment} . — sửa tới khi đạt hoặc ghi .harness-run/blocked.json. Không hỏi ai.`;
+
 function specPrompt({ payload }) {
   const { segment, serial, rework } = payload;
   if (!Object.hasOwn(SEGMENTS, segment)) throw new Error('payload.segment không hợp lệ');
+  if (HARNESS_SEGMENTS.includes(segment)) return harnessPrompt(segment);
   const start = `Gọi skill learn-app:learn-app rồi chạy không người, đoạn ${SEGMENTS[segment]}. Bắt đầu bằng: node "${STATE_CLI}" headless-start. Làm đúng mục "Chạy không người (LEARN_APP_HEADLESS=1)" của skill cho tới chỗ dừng của đoạn. Không hỏi ai.`;
   if (SEGMENTS[segment] !== 'build') return start;
   return [start, ...BUILD_RULES, ...reworkLine(rework), segment === 'smoke' ? smokeRule(serial) : CODE_RULE].join('\n');
@@ -45,4 +51,4 @@ function explainPrompt({ payload }) {
   ].join('\n\n');
 }
 
-module.exports = { PLUGIN_ROOT, STATE_CLI, specPrompt, explainPrompt, EXPLAIN_SCHEMA };
+module.exports = { PLUGIN_ROOT, STATE_CLI, HARNESS_SEGMENTS, specPrompt, explainPrompt, EXPLAIN_SCHEMA };

@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { refreshBuilding } = require('../src/spec-build-commands.cjs');
+const { refreshBuilding } = require('../../src/spec-build-commands.cjs');
 const { setupBuild, coded, put } = require('./specs-build-fixtures.cjs');
 
 const NEW = '# [ABC1] Spec gốc\n\n## Path\nMàn path\n\n## Quiz\nMàn quiz phải có đồng hồ 30 giây, quiz-screen\n';

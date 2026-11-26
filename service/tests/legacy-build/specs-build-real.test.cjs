@@ -2,11 +2,11 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { tick } = require('../src/tick.cjs');
+const { tick } = require('../../src/tick.cjs');
 const { setupBuild, g, VERSION, SERIAL } = require('./specs-build-fixtures.cjs');
-const { writeScript, sleep } = require('./service-fixtures.cjs');
+const { writeScript, sleep } = require('../service-fixtures.cjs');
 
-const WORKER = path.join(__dirname, 'fixtures', 'fake-learn-app-worker.cjs');
+const WORKER = path.join(__dirname, 'fake-learn-app-worker.cjs');
 
 function gradle(root) {
   const bin = path.join(root, 'fake-bin', 'gradlew');

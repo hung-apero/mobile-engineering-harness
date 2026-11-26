@@ -1,7 +1,7 @@
 const files = require('./repo-files.cjs');
 const { runGh } = require('../bugs/git.cjs');
 const { move, park, decide, closeWaits } = require('./kit.cjs');
-const { buildOf, saveBuild, learnState, devWait } = require('./build-kit.cjs');
+const { buildOf, saveBuild, devWait } = require('./build-kit.cjs');
 const { fresh } = require('./segment.cjs');
 const { firstLine } = require('../redact.cjs');
 
@@ -92,7 +92,7 @@ async function unmet(run) {
 
 function approvalProblem(run) {
   const { repo } = run.spec.data;
-  if (learnState(repo)?.gates?.g1?.status !== 'approved') return 'cổng 1 không còn ở trạng thái đã duyệt';
+  if (files.readJson(repo, 'inputs/approval.json')?.sha !== run.spec.approvedSha) return 'lời duyệt trong bản clone không khớp bản PO đã duyệt';
   return files.latestSpec(repo)?.sha === run.spec.approvedSha ? null : 'bản spec mới nhất không phải bản PO đã duyệt';
 }
 

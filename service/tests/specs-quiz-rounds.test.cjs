@@ -4,15 +4,16 @@ const { setup, asked, clarified, put, Q4 } = require('./specs-flow-fixtures.cjs'
 
 test('a new question that only the PO may answer opens a round even when it does not block (M7)', async t => {
   const soft = Q4.replace(' [chặn]', '');
-  for (const step of ['clear', 'update-spec']) {
+  const triage = { items: [{ id: 'Q3', decision: 'ask', reason: 'x', category: 'unclear' }, { id: 'Q4', decision: 'ask', reason: 'giá gói', category: 'money' }] };
+  for (const step of ['questions-only', 'with-spec']) {
     const s = setup(t);
     await s.toQuiz();
     s.answer();
     await s.finish(repo => {
       const md = `${s.read('questions.md')}\n${soft}`;
-      if (step === 'clear') asked(repo, md, { items: [] });
+      if (step === 'questions-only') asked(repo, md, triage);
       else {
-        put(repo, { 'questions.md': md, 'triage.json': { items: [] } });
+        put(repo, { 'questions.md': md, 'triage.json': triage });
         clarified(repo);
       }
     });
@@ -31,7 +32,7 @@ test('a new question the agent may settle by itself does not stop the review', a
   await s.toQuiz();
   s.answer();
   await s.finish(repo => {
-    put(repo, { 'questions.md': `${s.read('questions.md')}\n## Q5 · Bo góc nút?\n- A. 8\n- B. 4\n- **Đề xuất: A** — x\n`, 'triage.json': { items: [{ id: 'Q5', decision: 'auto', label: 'A', source: 'Figma 1:2', reason: 'rõ', category: 'evidence' }] } });
+    put(repo, { 'questions.md': `${s.read('questions.md')}\n## Q5 · Bo góc nút?\n- A. 8\n- B. 4\n- **Đề xuất: A** — x\n`, 'triage.json': { items: [{ id: 'Q3', decision: 'ask', reason: 'x', category: 'unclear' }, { id: 'Q5', decision: 'auto', label: 'A', source: 'Figma 1:2', reason: 'rõ', category: 'evidence' }] } });
     clarified(repo, 2, '# Spec\nQ1 Q2 — Agent tự chốt Q3 Q5\n');
   });
   assert.equal(s.spec().state, 'review');

@@ -35,7 +35,9 @@ async function prepare(run) {
 function settleAnswers(run) {
   const { repo } = run.spec.data;
   const md = files.read(repo, 'questions.md');
-  if (md !== null && !matches(md, ...ledger(run))) restore(run, md);
+  if (md === null || matches(md, ...ledger(run))) return false;
+  restore(run, md);
+  return true;
 }
 
 function review(run, { latest }) {
@@ -46,8 +48,9 @@ function review(run, { latest }) {
 
 async function look(run) {
   try {
-    settleAnswers(run);
-    return await inspect(run);
+    const restored = settleAnswers(run);
+    const found = await inspect(run);
+    return restored && found.type === 'clarified' ? { type: 'short', reason: 'worker đã sửa câu trả lời, bản spec phải viết lại' } : found;
   } catch (error) {
     return { type: 'short', reason: firstLine(error) };
   }

@@ -3,13 +3,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const bugs = require('../src/bugs/store.cjs');
-const hooks = require('../src/specs/release-hooks.cjs');
-const { resetDry } = require('../src/bugs/reset-dry.cjs');
+const bugs = require('../../src/bugs/store.cjs');
+const hooks = require('../../src/specs/release-hooks.cjs');
+const { resetDry } = require('../../src/bugs/reset-dry.cjs');
 const { setupBuild, commit, coded, g, VERSION } = require('./specs-build-fixtures.cjs');
 const { BRANCH, bugLane, tip, drain, toLanding } = require('./specs-landing-fixtures.cjs');
 
-const loadProject = s => require('../src/projects.cjs').loadProjects(s.ctx.projectsDir, { dzHome: s.ctx.dzHome }).projects.get('ABC1');
+const loadProject = s => require('../../src/projects.cjs').loadProjects(s.ctx.projectsDir, { dzHome: s.ctx.dzHome }).projects.get('ABC1');
 
 async function solve(s, text) {
   await s.finish(repo => {
@@ -110,7 +110,7 @@ test('a landing that found commits of a human on the version takes them and trie
 });
 
 test('the version PR names the feature that landed (M13)', async t => {
-  const { prText } = require('../src/bugs/phase-build.cjs');
+  const { prText } = require('../../src/bugs/phase-build.cjs');
   const s = await toLanding(t);
   await drain(s, () => s.spec().state === 'landed-dry');
   const { body } = prText({ batch: s.batches()[0] });

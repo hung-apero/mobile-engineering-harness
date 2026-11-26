@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const bugs = require('../src/bugs/store.cjs');
+const bugs = require('../../src/bugs/store.cjs');
 const { setupBuild, commit, g, VERSION } = require('./specs-build-fixtures.cjs');
 
 const BRANCH = `dz/release-${VERSION}`;

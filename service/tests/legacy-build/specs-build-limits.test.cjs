@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const S = require('../vendor/learn-app/lib/learn-app-state.cjs');
+const S = require('../../vendor/learn-app/lib/learn-app-state.cjs');
 const { setupBuild, editState, put, PLAN } = require('./specs-build-fixtures.cjs');
 
 const IDS = Array.from({ length: 12 }, (_, i) => `${String(i + 1).padStart(2, '0')}-p`);

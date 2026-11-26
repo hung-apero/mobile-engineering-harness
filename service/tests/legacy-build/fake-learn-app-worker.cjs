@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const F = require('../specs-build-fixtures.cjs');
+const F = require('./specs-build-fixtures.cjs');
 const flow = require('../specs-flow-fixtures.cjs');
 
 const CLI = path.join(__dirname, '..', '..', 'vendor', 'learn-app', 'bin', 'learn-app-state.cjs');

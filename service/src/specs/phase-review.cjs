@@ -1,4 +1,5 @@
 const files = require('./repo-files.cjs');
+const { checkRepo } = require('./wire.cjs');
 const { matches } = require('./answer-ledger.cjs');
 const { restore } = require('./phase-quiz.cjs');
 const { oneLine } = require('./answers.cjs');
@@ -12,7 +13,6 @@ const MINUTE = 60 * 1000;
 const MAX_COMMENTS = 5;
 
 const intact = run => matches(files.read(run.spec.data.repo, 'questions.md') ?? '', run.spec.data.answered ?? {}, run.spec.data.questionsMd ?? '');
-const gateOf = repo => files.readJson(repo, 'state.json')?.gates?.g1?.status;
 
 function reclarify(run) {
   restore(run, files.read(run.spec.data.repo, 'questions.md') ?? '');
@@ -27,15 +27,11 @@ function refuse(run, error) {
   return { ok: false, error: 'Chưa ghi được lời duyệt. Dev trực đã được báo, bạn thử lại sau.' };
 }
 
-async function recordGate(run, repo, { quote }) {
-  const call = args => run.ctx.specs.runState(run.project, repo, args);
+async function recordGate(run, repo, { sha, by, at }) {
   try {
-    if (gateOf(repo) !== 'approved') {
-      const out = await call(['approve', 'g1', '--quote', quote]);
-      if (out.code !== 0) return firstLine(out.stderr || `approve trả mã ${out.code}`);
-    }
-    if (gateOf(repo) !== 'approved') return 'state.json chưa ghi cổng 1 đã duyệt';
-    return JSON.parse((await call(['status'])).stdout).gates.g1.commit ? null : 'chưa có commit ghi lời duyệt';
+    await checkRepo(repo);
+    files.write(repo, 'inputs/approval.json', `${JSON.stringify({ sha, by, at })}\n`);
+    return null;
   } catch (error) {
     return firstLine(error);
   }

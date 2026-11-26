@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const S = require('../vendor/learn-app/lib/learn-app-state.cjs');
+const S = require('../../vendor/learn-app/lib/learn-app-state.cjs');
 const { setupBuild, editState, smoked } = require('./specs-build-fixtures.cjs');
 
 const decision = (extra = {}) => ({ id: 'd1', question: 'Nút đóng ở đâu?', kind: 'business', options: [{ label: 'Trái', owner: 'x' }, { label: 'Phải', owner: 'x' }], choice: 'Trái', provisional: true, why: 'khớp spec nhất', ...extra });

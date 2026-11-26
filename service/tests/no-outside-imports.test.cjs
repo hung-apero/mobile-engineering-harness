@@ -6,32 +6,18 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const VENDOR = path.join(ROOT, 'vendor', 'learn-app');
 const SCANNED = ['src', 'bin', 'tests', 'channels'];
+const SKIPPED = path.join(ROOT, 'tests', 'legacy-build');
 const REQUIRE = /require\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/g;
 
 const VENDOR_USERS = new Set([
-  'src/specs/answer-ledger.cjs',
   'src/specs/build-kit.cjs',
   'src/specs/phase-build.cjs',
-  'tests/specs-build-change.test.cjs',
-  'tests/specs-build-fixtures.cjs',
-  'tests/specs-build-flow.test.cjs',
-  'tests/specs-build-forged.test.cjs',
-  'tests/specs-build-landing.test.cjs',
-  'tests/specs-build-limits.test.cjs',
-  'tests/specs-build-provisional.test.cjs',
-  'tests/specs-build-review.test.cjs',
-  'tests/specs-build-rework.test.cjs',
-  'tests/specs-clone.test.cjs',
-  'tests/specs-flow-fixtures.cjs',
-  'tests/specs-flow.test.cjs',
-  'tests/specs-questions.test.cjs',
-  'tests/specs-recovery.test.cjs',
 ]);
 
 function sources(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : sources(full);
+    if (entry.isDirectory()) return entry.name === 'node_modules' || full === SKIPPED ? [] : sources(full);
     return /\.c?js$/.test(entry.name) ? [full] : [];
   });
 }

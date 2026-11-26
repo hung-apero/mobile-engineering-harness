@@ -1,7 +1,11 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { parseQuestions } = require('../src/specs/questions.cjs');
-const { questionBlocks } = require('../vendor/learn-app/lib/looper-parse.cjs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+
+const SCRIPTS = path.join(__dirname, '..', '..', 'skills', 'feature', 'scripts');
+const checkerParse = md => JSON.parse(execFileSync('python3', ['-I', '-c', 'import sys, json; sys.path.insert(0, sys.argv[1]); import headless_check as h; print(json.dumps(h.parse_questions(sys.stdin.read())))', SCRIPTS], { input: md, encoding: 'utf8' }));
 
 const SAMPLE = `# Câu hỏi
 
@@ -49,15 +53,14 @@ test('parseQuestions reads id, title, blocking, body, options, proposal and answ
   assert.deepEqual(q5.answer, { kind: 'agent', label: 'A', text: 'spec §3' });
 });
 
-test('parseQuestions agrees with looper questionBlocks on ids, titles, blocking, option count and answered', () => {
+test('parseQuestions agrees with the harness checker on ids, blocking, options, proposal and answered', () => {
   const mine = parseQuestions(SAMPLE);
-  const theirs = questionBlocks(SAMPLE, { agent: true });
+  const theirs = checkerParse(SAMPLE);
   assert.deepEqual(mine.map(q => q.id), theirs.map(q => q.id));
   assert.deepEqual(mine.map(q => q.blocking), theirs.map(q => q.blocking));
-  assert.deepEqual(mine.map(q => q.options.length), theirs.map(q => q.options));
-  assert.deepEqual(mine.map(q => q.proposal !== null), theirs.map(q => q.recommended));
+  assert.deepEqual(mine.map(q => q.options.map(o => o.label)), theirs.map(q => q.labels));
+  assert.deepEqual(mine.map(q => q.proposal !== null), theirs.map(q => q.proposals === 1));
   assert.deepEqual(mine.map(q => q.answered), theirs.map(q => q.answered));
-  assert.deepEqual(mine.map(q => q.title), theirs.map(q => q.title.replace(/^Q\d+\s*·\s*/, '').replace(/\s*\[chặn\]/, '')));
 });
 
 test('parseQuestions returns nothing for empty text or Không có câu hỏi', () => {

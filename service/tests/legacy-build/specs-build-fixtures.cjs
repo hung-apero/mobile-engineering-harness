@@ -1,16 +1,16 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { makeHome, fakeWorkers, writeScript, OK, NOW } = require('./service-fixtures.cjs');
-const { g, commit, makeHarness } = require('./bugs-git-fixtures.cjs');
-const { asked, clarified, put } = require('./specs-flow-fixtures.cjs');
-const { tick } = require('../src/tick.cjs');
-const jobs = require('../src/jobs.cjs');
-const store = require('../src/specs/store.cjs');
-const bugs = require('../src/bugs/store.cjs');
-const { prepareSpecClone } = require('../src/specs/clone.cjs');
-const { createFacade } = require('../src/specs/facade.cjs');
-const commands = require('../src/spec-commands.cjs');
-const S = require('../vendor/learn-app/lib/learn-app-state.cjs');
+const { makeHome, fakeWorkers, writeScript, OK, NOW } = require('../service-fixtures.cjs');
+const { g, commit, makeHarness } = require('../bugs-git-fixtures.cjs');
+const { asked, clarified, put } = require('../specs-flow-fixtures.cjs');
+const { tick } = require('../../src/tick.cjs');
+const jobs = require('../../src/jobs.cjs');
+const store = require('../../src/specs/store.cjs');
+const bugs = require('../../src/bugs/store.cjs');
+const { prepareSpecClone } = require('../../src/specs/clone.cjs');
+const { createFacade } = require('../../src/specs/facade.cjs');
+const commands = require('../../src/spec-commands.cjs');
+const S = require('../../vendor/learn-app/lib/learn-app-state.cjs');
 
 const VERSION = '1.9.2';
 const SERIAL = 'emu-1';

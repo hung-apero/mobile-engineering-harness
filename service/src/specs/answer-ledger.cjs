@@ -1,7 +1,6 @@
 const store = require('./store.cjs');
 const { parseQuestions, splitBlocks } = require('./questions.cjs');
 const { writeAnswers } = require('./answers.cjs');
-const { questionBlocks } = require('../../vendor/learn-app/lib/looper-parse.cjs');
 const { chosen, OTHER } = require('../web/quiz-model.cjs');
 const { submission } = require('./kit.cjs');
 
@@ -51,7 +50,7 @@ function rebuild(md, answered, base = '') {
 }
 
 const told = md => JSON.stringify(parseQuestions(md).filter(q => q.answered).map(q => [q.id, q.answer.kind, q.answer.label, q.answer.text]).sort());
-const seen = md => JSON.stringify(questionBlocks(md, { agent: true }).filter(q => q.answered).map(q => q.id).sort());
+const seen = md => JSON.stringify(parseQuestions(md).filter(q => q.answered).map(q => q.id).sort());
 
 function matches(md, answered, base = '') {
   const text = clean(md);

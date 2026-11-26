@@ -9,13 +9,13 @@ const PO = /\bPO\b|spec|thiết kế|design|figma|nội dung|góp ý/i;
 
 const line = (text, max = 300) => redact(String(text ?? '').replace(/[\p{C}\s]+/gu, ' ').trim()).slice(0, max).toWellFormed();
 
-function blockedOf(repo) {
-  if (files.read(repo, 'headless-blocked.json') === null) return null;
-  const found = files.readJson(repo, 'headless-blocked.json') ?? {};
+function blockedOf(repo, name = 'blocked.json') {
+  if (files.read(repo, name) === null) return null;
+  const found = files.readJson(repo, name) ?? {};
   const reason = line(found.reason) || 'worker dừng, không ghi rõ lý do';
   const missing = (Array.isArray(found.missing) ? found.missing : []).slice(0, 10).map(item => line(item, 120)).filter(Boolean);
   const text = [reason, ...missing].join(' ');
-  return { type: 'blocked', kind: line(found.step, 20) || 'spec', role: !DEV.test(text) && PO.test(text) ? 'po' : 'dev', reason, missing };
+  return { type: 'blocked', kind: line(found.segment ?? found.step, 20) || 'spec', role: !DEV.test(text) && PO.test(text) ? 'po' : 'dev', reason, missing };
 }
 
 const short = reason => ({ type: 'short', reason });
@@ -43,23 +43,16 @@ function unseenForPo(spec, md) {
 
 async function inspect(run) {
   const { repo, segment } = run.spec.data;
-  const state = files.readJson(repo, 'state.json');
-  if (state && state.gates?.g1?.status !== 'pending') return { type: 'tampered', reason: 'worker đã đổi trạng thái cổng 1' };
+  if (segment.inputsSha && files.inputsSha(repo) !== segment.inputsSha) return { type: 'tampered', reason: 'worker đã sửa .harness-run/inputs' };
   const blocked = blockedOf(repo);
   if (blocked) return blocked;
-  if (!state) return short('chưa có state.json');
-  const stop = segment.name === 'ask' ? ['clear'] : ['clear', 'update-spec'];
-  if (!stop.includes(state.step)) return short(`đang ở bước ${line(state.step, 20)}`);
+  const checked = await run.ctx.specs.check(run.project, repo, segment.name);
+  if (checked.problems.length) return short(line(checked.problems.join('; '), 500));
   const md = files.read(repo, 'questions.md');
   if (md === null) return short('chưa có questions.md');
   if (segment.name === 'ask') return { type: 'questions', md };
   if (unseenForPo(run.spec, md)) return { type: 'questions', md };
-  if (state.step === 'clear') {
-    const open = parseQuestions(md).filter(q => q.blocking && !q.answered);
-    return open.length ? { type: 'questions', md } : short('còn ở bước clear');
-  }
-  const problem = await atGate(run, repo);
-  if (problem) return short(problem);
+  if (parseQuestions(md).some(q => q.blocking && !q.answered)) return { type: 'questions', md };
   const latest = files.latestSpec(repo);
   if (!latest || latest.version <= (run.spec.data.reviewFloor ?? 1)) return short('chưa có bản spec đã làm rõ mới');
   return { type: 'clarified', md, latest };

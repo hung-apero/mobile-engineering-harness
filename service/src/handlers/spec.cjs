@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { specPrompt, PLUGIN_ROOT } = require('../specs/prompts.cjs');
+const { specPrompt, PLUGIN_ROOT, HARNESS_SEGMENTS } = require('../specs/prompts.cjs');
 const { figmaReadConfig, FIGMA_TOOLS } = require('../specs/figma-config.cjs');
 const { featureReviewPrompt, FEATURE_REVIEW_SCHEMA } = require('../specs/feature-review.cjs');
 const { writeAdbWrapper, SERIAL } = require('../devices.cjs');
@@ -52,6 +52,7 @@ function prepare(job, options) {
   const { payload } = job;
   if (payload.type === 'review') return prepareReview(job, options);
   const prompt = specPrompt(job);
+  const harness = HARNESS_SEGMENTS.includes(payload.segment);
   const smoke = payload.segment === 'smoke';
   const building = smoke || payload.segment === 'build';
   const denied = building ? [...COMMANDS.filter(command => !(smoke && command === 'adb')), ...EMULATOR] : COMMANDS;
@@ -63,12 +64,11 @@ function prepare(job, options) {
     allowedTools: [...ALLOWED, ...(payload.figma ? FIGMA_TOOLS : [])],
     disallowedTools: ['AskUserQuestion', ...denied.map(command => `Bash(${command}:*)`), ...(building ? OTHER_ADB : []), ...DENIED_TOOLS, `Read(/${dzHome}/secrets/**)`],
     mcpConfig: payload.figma ? figmaReadConfig(dzHome) : undefined,
-    pluginDirs: [PLUGIN_ROOT],
+    pluginDirs: harness ? [] : [PLUGIN_ROOT],
     env: {
       ...isolatedEnv(dzHome, { config: NO_PUSH }),
       ...IDENTITY,
-      LEARN_APP_HEADLESS: '1',
-      LEARN_APP_TRACKING: project.live === true ? null : 'off',
+      ...(harness ? { HARNESS_HEADLESS: '1' } : { LEARN_APP_HEADLESS: '1', LEARN_APP_TRACKING: project.live === true ? null : 'off' }),
       ...(building && { LEARN_APP_PARALLEL: String(Math.max(1, job.slotsGranted ?? 1)) }),
       ...deviceEnv(job, options),
     },

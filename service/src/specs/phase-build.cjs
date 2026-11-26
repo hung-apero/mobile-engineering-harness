@@ -66,7 +66,7 @@ function settleCode(run, state, error) {
   const { repo } = run.spec.data;
   if (state.step === 'smoke') return toSmoke(run);
   if (state.step === 'handoff') return park(run, 'worker đi qua bước chạy thử khi chưa được cấp thiết bị');
-  const blocked = blockedOf(repo);
+  const blocked = blockedOf(repo, 'headless-blocked.json');
   if (hardOpen(run) && blocked) return move(run, 'provisional');
   return blocked ? needInput(run, blocked) : restart(run, `đang ở bước ${line(state.step, 20)}`, error);
 }
@@ -74,7 +74,7 @@ function settleCode(run, state, error) {
 async function settleSmoke(run, state, error, serial) {
   const { repo } = run.spec.data;
   const report = readSmoke(repo);
-  const blocked = blockedOf(repo);
+  const blocked = blockedOf(repo, 'headless-blocked.json');
   if (state.step !== 'handoff') {
     if (hardOpen(run) && blocked) return move(run, 'provisional');
     if (report?.result === 'blocked' && state.step === 'smoke') decide(run, 'F05', 'spec-smoke-blocked', { device: report.device });

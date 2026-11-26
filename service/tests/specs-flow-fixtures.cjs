@@ -5,7 +5,8 @@ const { tick } = require('../src/tick.cjs');
 const jobs = require('../src/jobs.cjs');
 const store = require('../src/specs/store.cjs');
 const { createFacade } = require('../src/specs/facade.cjs');
-const S = require('../vendor/learn-app/lib/learn-app-state.cjs');
+const { createSpecs } = require('../src/specs/wire.cjs');
+const CHECKER = path.join(__dirname, '..', '..', 'skills', 'feature', 'scripts', 'headless_check.py');
 const { makeHome, fakeWorkers, OK, NOW } = require('./service-fixtures.cjs');
 
 const Q1 = '## Q1 · Change path đi đâu? [chặn]\nBối cảnh\n- A. Về nhà\n- B. Ở lại\n- **Đề xuất: B** — spec\n';
@@ -15,11 +16,10 @@ const Q4 = '## Q4 · Giá gói tuần? [chặn]\n- A. 1\n- B. 2\n- **Đề xuấ
 const QUESTIONS = `${Q1}\n${Q2}\n${Q3}`;
 const AUTO2 = { id: 'Q2', decision: 'auto', label: 'A', source: 'Figma 1:2', reason: 'rõ', category: 'evidence' };
 const TRIAGE = { items: [{ id: 'Q1', decision: 'ask', reason: 'x', category: 'unclear' }, AUTO2, { id: 'Q3', decision: 'ask', reason: 'x', category: 'unclear' }] };
-const MANIFEST = 'schema: 1.0.0\nfeatures:\n  - id: x\n    catalog: x\n    decided_by: [Q1]\n';
 
 function put(repo, files) {
   for (const [name, text] of Object.entries(files)) {
-    const file = path.join(repo, '.learn-app', name);
+    const file = path.join(repo, '.harness-run', name);
     if (text === null) fs.rmSync(file, { force: true });
     else {
       fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -44,27 +44,17 @@ function fakeClone(dzHome, calls) {
       g(repo, 'commit', '-qm', 'first');
       g(repo, 'checkout', '-q', '-b', 'learn-app/abc1');
     }
-    put(repo, { 'inputs/spec-v1.md': `${markdown}\n`, 'inputs/spec-source.json': '{"type":"pasted"}' });
+    put(repo, { 'inputs/spec-v1.md': `${markdown}\n` });
     return { repo, harnessRoot: repo };
   };
 }
 
-function stateAt(repo, step) {
-  const file = path.join(repo, '.learn-app', 'state.json');
-  const state = fs.existsSync(file) ? S.readState(repo) : S.newState('existing', 'ABC1');
-  state.step = step;
-  S.writeState(repo, state);
-  put(repo, { 'gates/approvals.md': '# Phê duyệt của PO\n' });
-}
-
 function asked(repo, questions = QUESTIONS, triage = TRIAGE) {
-  stateAt(repo, 'clear');
   put(repo, { 'questions.md': questions, 'triage.json': triage });
 }
 
 function clarified(repo, version = 2, text = '# Spec\n(Q1: B) (Q2: A — Agent tự chốt) Q3 Q4\n') {
-  stateAt(repo, 'update-spec');
-  put(repo, { [`inputs/spec-v${version}.md`]: text, 'app-manifest.yaml': MANIFEST });
+  put(repo, { [`clarified/spec-v${version}.md`]: text });
 }
 
 function setup(t, { live = false, source = { type: 'pasted', text: '# [ABC1] Spec gốc\nNội dung' }, figma = 'none' } = {}) {
@@ -75,13 +65,14 @@ function setup(t, { live = false, source = { type: 'pasted', text: '# [ABC1] Spe
   const { calls, alive } = fakeWorkers(ctx);
   const clones = [];
   ctx.specs.prepareClone = fakeClone(ctx.dzHome, clones);
+  ctx.specs.check = createSpecs(ctx, { checker: CHECKER }).check;
   ctx.specs.confluence = () => { throw new Error('không được gọi Confluence'); };
   const facade = createFacade(ctx);
   const id = facade.newSpec({ project: 'ABC1', source, figma, title: null }, NOW).id;
   const s = { h, ctx, facade, calls, alive, clones, sends, id, now: NOW };
   s.spec = () => store.getSpec(ctx.db, id);
   s.repo = () => s.spec().data.repo;
-  s.read = name => fs.readFileSync(path.join(s.repo(), '.learn-app', name), 'utf8');
+  s.read = name => fs.readFileSync(path.join(s.repo(), '.harness-run', name), 'utf8');
   s.tick = async (ms = 10000) => {
     s.now += ms;
     await tick(ctx, s.now);
@@ -123,4 +114,4 @@ function setup(t, { live = false, source = { type: 'pasted', text: '# [ABC1] Spe
   return s;
 }
 
-module.exports = { setup, put, asked, clarified, stateAt, g, Q1, Q2, Q3, Q4, QUESTIONS, TRIAGE, AUTO2, NOW, OK };
+module.exports = { setup, put, asked, clarified, g, Q1, Q2, Q3, Q4, QUESTIONS, TRIAGE, AUTO2, NOW, OK };

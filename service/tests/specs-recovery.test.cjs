@@ -5,10 +5,9 @@ const path = require('node:path');
 const jobs = require('../src/jobs.cjs');
 const store = require('../src/specs/store.cjs');
 const commands = require('../src/spec-commands.cjs');
-const S = require('../vendor/learn-app/lib/learn-app-state.cjs');
 const { createRun, openOnce } = require('../src/specs/kit.cjs');
 const { loadProjects } = require('../src/projects.cjs');
-const { setup, asked, clarified, put, stateAt, OK } = require('./specs-flow-fixtures.cjs');
+const { setup, asked, clarified, put, QUESTIONS, OK } = require('./specs-flow-fixtures.cjs');
 
 const DENIED = { type: 'result', subtype: 'error_during_execution', is_error: true, result: 'x', permission_denials: [{ tool_name: 'Bash', tool_input: { command: 'adb devices' } }] };
 
@@ -22,7 +21,7 @@ test('a worker that dies in the clarify segment runs the same segment again with
   await s.tick();
   await s.until(() => s.running().length === 1);
   assert.equal(s.running()[0].resumes, 1);
-  await s.finish(() => stateAt(s.repo(), 'update-spec'));
+  await s.finish();
   const job = s.ctx.db.prepare("SELECT key FROM jobs WHERE kind = 'spec' ORDER BY id DESC LIMIT 1").get();
   assert.equal(job.key, `${s.id}#clarify-${s.spec().data.serial}`);
   assert.equal(s.spec().data.segment.tries, 2);
@@ -33,11 +32,11 @@ test('a worker that dies in the clarify segment runs the same segment again with
 
 test('a segment that stops short twice is parked with a dev wait, and retry starts it again', async t => {
   const s = setup(t);
-  await s.finish(repo => stateAt(repo, 'scout'));
+  await s.finish(repo => put(repo, { 'questions.md': QUESTIONS }));
   assert.equal(s.spec().state, 'asking');
   await s.finish();
   assert.equal(s.spec().state, 'parked');
-  assert.match(s.spec().data.parked.reason, /bước scout/);
+  assert.match(s.spec().data.parked.reason, /triage\.json/);
   assert.deepEqual(s.waits().map(w => w.role), ['dev']);
   assert.match((await commands.spec(s.ctx, ['retry', String(s.id)], s.now))[0], /asking/);
   assert.equal(s.waits().length, 0);
@@ -60,14 +59,14 @@ test('a worker result that claims success without files is not believed', async 
   assert.equal(s.spec().state, 'asking');
 });
 
-test('headless-blocked.json stops the spec with its reason and the right role', async t => {
+test('blocked.json stops the spec with its reason and the right role', async t => {
   for (const [blocked, roles] of [
-    [{ step: 'spec', reason: 'preflight: thiếu JDK', missing: ['JDK 17'] }, ['dev']],
-    [{ step: 'ask', reason: 'spec thiếu màn kết quả', missing: [] }, ['po', 'dev']],
-    [{ step: 'scout', reason: 'Figma trả 403', missing: [] }, ['dev']],
+    [{ segment: 'ask', reason: 'preflight: thiếu JDK', missing: ['JDK 17'] }, ['dev']],
+    [{ segment: 'ask', reason: 'spec thiếu màn kết quả', missing: [] }, ['po', 'dev']],
+    [{ segment: 'ask', reason: 'Figma trả 403', missing: [] }, ['dev']],
   ]) {
     const s = setup(t);
-    await s.finish(repo => put(repo, { 'headless-blocked.json': blocked }));
+    await s.finish(repo => put(repo, { 'blocked.json': blocked }));
     assert.equal(s.spec().state, 'needs-input');
     assert.deepEqual([s.spec().data.needs.reason, s.waits().map(w => w.role)], [blocked.reason, roles]);
     assert.ok(s.waits()[0].subject.includes(blocked.reason));
@@ -75,7 +74,7 @@ test('headless-blocked.json stops the spec with its reason and the right role', 
     await commands.spec(s.ctx, ['retry', String(s.id)], s.now);
     assert.equal(s.waits().length, 0);
     await s.until(() => s.running().length === 1);
-    assert.equal(fs.existsSync(path.join(s.repo(), '.learn-app', 'headless-blocked.json')), false);
+    assert.equal(fs.existsSync(path.join(s.repo(), '.harness-run', 'blocked.json')), false);
   }
 });
 
@@ -100,30 +99,23 @@ test('dz retry on the job alone also brings a parked spec back', async t => {
   assert.equal(s.spec().state, 'quiz');
 });
 
-test('a crash between the approval and the state change is finished from disk, once', async t => {
+test('a crash after the approval file is written is finished from disk, once', async t => {
   const s = setup(t);
   await s.toReview();
   const { sha } = s.facade.review(s.id);
-  const real = s.ctx.specs.runState;
-  s.ctx.specs.runState = async (project, repo, args) => {
-    await real(project, repo, args);
-    throw new Error('service chết');
-  };
   store.patchData(s.ctx.db, s.id, { approving: { sha, quote: 'Duyệt', by: 'po', at: s.now } }, s.now);
-  const out = await s.facade.approve(s.id, { sha, quote: 'Duyệt' }, 'po', s.now);
-  assert.equal(out.ok, false);
-  assert.equal(s.spec().state, 'review');
-  s.ctx.specs.runState = real;
-  store.patchData(s.ctx.db, s.id, { approving: { sha, quote: 'Duyệt', by: 'po', at: s.now } }, s.now);
+  put(s.repo(), { 'inputs/approval.json': { sha, by: 'po', at: s.now } });
   await s.tick();
   assert.deepEqual([s.spec().state, s.spec().approvedSha], ['approved', sha]);
-  assert.equal(s.read('gates/approvals.md').match(/g1 · PO/g).length, 1);
+  await s.tick();
+  assert.equal(s.decisions('spec-approved').length, 1);
+  assert.equal(JSON.parse(s.read('inputs/approval.json')).sha, sha);
 });
 
-test('a failing approve command keeps the review open and calls the dev', async t => {
+test('an approval that cannot be written keeps the review open and calls the dev', async t => {
   const s = setup(t);
   await s.toReview();
-  s.ctx.specs.runState = async () => ({ code: 2, stdout: '', stderr: 'còn thiếu x' });
+  fs.mkdirSync(path.join(s.repo(), '.harness-run', 'inputs', 'approval.json', 'x'), { recursive: true });
   const out = await s.facade.approve(s.id, { sha: s.facade.review(s.id).sha, quote: 'Duyệt' }, 'po', s.now);
   assert.equal(out.ok, false);
   assert.equal(s.spec().state, 'review');
@@ -137,7 +129,7 @@ test('a clone with a foreign git setting never runs a command for the PO', async
   const out = await s.facade.approve(s.id, { sha: s.facade.review(s.id).sha, quote: 'Duyệt' }, 'po', s.now);
   assert.equal(out.ok, false);
   assert.match(s.decisions('spec-approve-failed')[0].evidence, /filter/);
-  assert.equal(S.readState(s.repo()).gates.g1.status, 'pending');
+  assert.equal(fs.existsSync(path.join(s.repo(), '.harness-run', 'inputs', 'approval.json')), false);
 });
 
 test('a source that cannot be read is tried again with longer gaps, then parked', async t => {

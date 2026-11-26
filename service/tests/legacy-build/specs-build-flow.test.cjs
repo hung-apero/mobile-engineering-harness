@@ -2,8 +2,8 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const S = require('../vendor/learn-app/lib/learn-app-state.cjs');
-const store = require('../src/specs/store.cjs');
+const S = require('../../vendor/learn-app/lib/learn-app-state.cjs');
+const store = require('../../src/specs/store.cjs');
 const { setupBuild, g, VERSION, SERIAL } = require('./specs-build-fixtures.cjs');
 
 test('an approved spec stays approved until dz spec build, then runs to the version branch in dry run', async t => {

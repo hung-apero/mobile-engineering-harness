@@ -90,8 +90,9 @@ test('handlers refuse a repo outside the project and a bad segment or Figma conf
   fs.writeFileSync(file, JSON.stringify({ mcpServers: { 'framelink-figma': {}, jira: {} } }), { mode: 0o600 });
   assert.throws(() => spec.prepare(job({ figma: true }), options), /đúng một server/);
   const out = spec.prepare(job({}), options);
-  assert.equal(out.env.LEARN_APP_HEADLESS, '1');
-  assert.equal(spec.prepare(job({}), { ...options, project: { ...project, live: true } }).env.LEARN_APP_TRACKING, null);
+  assert.equal(out.env.HARNESS_HEADLESS, '1');
+  assert.equal('LEARN_APP_TRACKING' in spec.prepare(job({}), { ...options, project: { ...project, live: true } }).env, false);
+  assert.deepEqual(out.pluginDirs, []);
   assert.equal(out.model, 'sonnet');
   assert.equal(out.allowedTools.some(name => name.startsWith('mcp__')), false);
   assert.ok(out.disallowedTools.includes(`Read(/${s.ctx.dzHome}/secrets/**)`));
