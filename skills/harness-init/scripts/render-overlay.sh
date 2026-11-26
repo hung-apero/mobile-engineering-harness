@@ -18,7 +18,7 @@ OUT="${3:?output_yaml required}"
 : "${THEME_PREFIX:?env THEME_PREFIX required}"
 : "${THEME_CLASS:?env THEME_CLASS required}"
 APP_DISPLAY_NAME="${APP_DISPLAY_NAME:-$PRODUCT_NAME}"
-TARGETS_RAW="${TARGETS:-android ios}"
+TARGETS_RAW="${TARGETS:-}"
 IMAGE_LIB="${IMAGE_LIB:-coil}"
 
 [ -f "$STACK_JSON" ] || { echo "ERROR: stack_json not found: $STACK_JSON" >&2; exit 1; }
@@ -37,7 +37,13 @@ DB=$(read_json_key database_framework)
 MVI=$(read_json_key mvi_base_class)
 PKG=$(read_json_key package_root)
 
-APP_MODULE=$("$PY" -c "import json; mods=json.load(open('$STACK_JSON')).get('modules',[]); print(mods[0] if mods else 'composeApp')")
+APP_MODULE=$("$PY" -c "import json; mods=json.load(open('$STACK_JSON')).get('modules',[]); print(next((m for m in ('composeApp', 'app', 'androidApp') if m in mods), mods[0] if mods else 'composeApp'))")
+layer() {
+  "$PY" -c "import json; mods=json.load(open('$STACK_JSON')).get('modules',[]); print('$1' if '$1' in mods else '$APP_MODULE')"
+}
+if [ -z "$TARGETS_RAW" ]; then
+  if [ "$UI" = "compose-multiplatform" ]; then TARGETS_RAW="android ios"; else TARGETS_RAW="android"; fi
+fi
 
 mkdir -p "$(dirname "$OUT")"
 {
@@ -50,9 +56,9 @@ mkdir -p "$(dirname "$OUT")"
   echo ""
   echo "modules:"
   echo "  app: $APP_MODULE"
-  echo "  presenter: presenter"
-  echo "  domain: domain"
-  echo "  data: data"
+  echo "  presenter: $(layer presenter)"
+  echo "  domain: $(layer domain)"
+  echo "  data: $(layer data)"
   echo ""
   echo "ui:"
   echo "  theme_prefix: $THEME_PREFIX"

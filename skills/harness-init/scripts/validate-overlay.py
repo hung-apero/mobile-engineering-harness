@@ -14,11 +14,6 @@ import json
 import sys
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:
-    print("ERROR: PyYAML not installed. Run: ~/.claude/skills/.venv/bin/pip install pyyaml", file=sys.stderr)
-    sys.exit(2)
 
 
 REQUIRED_KEYS = {
@@ -45,6 +40,13 @@ ENUM_VALUES = {
 
 
 def load_yaml(path: Path) -> dict:
+    if path.suffix == ".json":
+        return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        import yaml
+    except ImportError:
+        print("ERROR: PyYAML not installed. Run: ~/.claude/skills/.venv/bin/pip install pyyaml, or pass the overlay as .json", file=sys.stderr)
+        sys.exit(2)
     with path.open() as f:
         return yaml.safe_load(f)
 
@@ -106,7 +108,7 @@ def main() -> int:
 
     try:
         overlay = load_yaml(overlay_path)
-    except yaml.YAMLError as exc:
+    except Exception as exc:
         print(f"ERROR: parse failed: {exc}", file=sys.stderr)
         return 2
 
