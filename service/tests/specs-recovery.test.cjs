@@ -177,3 +177,12 @@ test('the wait about repeated errors is closed on recovery even after a restart 
   await s.tick();
   assert.deepEqual(s.waits(), []);
 });
+
+test('a missing overlay or harness waits for the dev instead of retrying the read', async t => {
+  for (const code of ['OVERLAY', 'HARNESS']) {
+    const s = setup(t);
+    s.ctx.specs.prepareClone = async () => { throw Object.assign(new Error(`thiếu ${code}`), { code }); };
+    await s.tick();
+    assert.deepEqual([s.spec().state, s.spec().data.needs.kind, s.waits().map(w => w.role)], ['needs-input', 'harness', ['dev']]);
+  }
+});

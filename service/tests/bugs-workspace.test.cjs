@@ -115,7 +115,7 @@ test('ensureClone recovers from a half made clone and refuses a foreign origin o
 test('the harness is linked into .claude and hidden from git', async t => {
   const w = await readyWorld(t);
   const claude = path.join(w.repo, '.claude');
-  assert.deepEqual(fs.readdirSync(path.join(claude, 'skills')).sort(), ['bug', 'bug-fix']);
+  assert.deepEqual(fs.readdirSync(path.join(claude, 'skills')).sort(), ['bug', 'bug-fix', 'feature', 'spec-clear']);
   assert.equal(fs.readlinkSync(path.join(claude, 'skills', 'bug')), path.join(w.harness, 'skills', 'bug'));
   assert.deepEqual(fs.readdirSync(path.join(claude, 'agents')).sort(), ['bug-fixer.md', 'bug-reviewer.md', 'bug-scout.md', 'ui-board-judge.md']);
   assert.equal(g(w.repo, 'status', '--porcelain'), '');

@@ -36,6 +36,7 @@ async function guarded(run, work) {
   } catch (error) {
     if (CONTENT_ERRORS.includes(error?.code)) needInput(run, { kind: 'source', role: 'po', reason: firstLine(error) });
     else if (error?.code === 'CHANGED') park(run, firstLine(error));
+    else if (['OVERLAY', 'HARNESS'].includes(error?.code)) needInput(run, { kind: 'harness', role: 'dev', reason: firstLine(error) });
     else return { changed: later(run, error) };
     return { changed: true };
   }

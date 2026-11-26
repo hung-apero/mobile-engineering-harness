@@ -31,6 +31,17 @@ function commit(dir, files, message = 'change') {
   return g(dir, 'rev-parse', 'HEAD');
 }
 
+const HARNESS_AGENTS = ['bug-fixer', 'bug-reviewer', 'bug-scout', 'ui-board-judge', 'architect', 'coder', 'qa', 'reviewer'];
+
+function makeHarness(harness) {
+  fs.mkdirSync(harness, { recursive: true });
+  g(harness, 'init', '-q', '-b', 'main');
+  return commit(harness, {
+    'skills/bug-fix/SKILL.md': 'x\n', 'skills/bug/SKILL.md': 'y\n', 'skills/feature/SKILL.md': 'f\n', 'skills/spec-clear/SKILL.md': 's\n', 'skills/README.md': 'z\n',
+    ...Object.fromEntries(HARNESS_AGENTS.map(name => [`agents/${name}.md`, `${name}\n`])),
+  });
+}
+
 function world(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'dz-git-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -45,12 +56,7 @@ function world(t) {
   g(dev, 'remote', 'add', 'origin', github);
   commit(dev, { 'a.txt': 'a\n', 'b.txt': 'b\n', '.gitignore': 'local.properties\n' }, 'first');
   g(dev, 'push', '-q', 'origin', 'develop');
-  g(harness, 'init', '-q', '-b', 'main');
-  const agents = ['bug-fixer', 'bug-reviewer', 'bug-scout', 'ui-board-judge', 'coder'];
-  const harnessCommit = commit(harness, {
-    'skills/bug-fix/SKILL.md': 'x\n', 'skills/bug/SKILL.md': 'y\n', 'skills/README.md': 'z\n',
-    ...Object.fromEntries(agents.map(name => [`agents/${name}.md`, `${name}\n`])),
-  });
+  const harnessCommit = makeHarness(harness);
   const project = { key: 'AAP1', repo: 'Apero/AAP1', base: 'develop', checkout, live: false, localFiles: [], harnessCommit, forbidden: [] };
   const records = [];
   const ctx = { dzHome, project, githubUrl: github, live: false, record: (code, text) => records.push([code, text]) };
@@ -79,4 +85,4 @@ const gitBefore = (match, act) => async (args, options) => {
   return runGit(args, options);
 };
 
-module.exports = { g, put, commit, world, readyWorld, gitBefore };
+module.exports = { g, put, commit, world, readyWorld, gitBefore, makeHarness };

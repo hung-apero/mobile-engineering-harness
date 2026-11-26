@@ -23,7 +23,7 @@ test('from a pasted spec to would: PR with real worker processes, a worker that 
   };
   const bin = gradle(s.h.root);
   const commands = { compile: [bin, 'compile'], unitTest: [bin, 'test'], assemble: [bin, 'assemble'], apkGlob: 'out/*.apk' };
-  s.h.project('ABC1', { live: false, forbidden: ['billing/**'], commands });
+  s.h.project('ABC1', { live: false, forbidden: ['billing/**'], commands, harnessCommit: s.harnessCommit });
   writeScript(path.join(s.h.root, 'fake-claude'), `exec "${process.execPath}" "${WORKER}" "$@"`);
   let now = s.now;
   const to = async name => {

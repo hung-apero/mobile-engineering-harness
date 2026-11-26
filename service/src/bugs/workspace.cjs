@@ -5,6 +5,7 @@ const {
 } = require('./git.cjs');
 
 const AGENTS = ['bug-fixer', 'bug-reviewer', 'bug-scout', 'ui-board-judge'];
+const FEATURE_AGENTS = ['architect', 'coder', 'qa', 'reviewer'];
 const COMMIT = /^[0-9a-f]{7,40}$/;
 const DARWIN_CONFIG = process.platform === 'darwin' ? '\tignorecase = true\n\tprecomposeunicode = true\n' : '';
 const MIRROR_CONFIG = `[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = true\n${DARWIN_CONFIG}[receive]\n\tdenyDeletes = true\n\tdenyNonFastForwards = true\n`;
@@ -101,7 +102,7 @@ async function checkHarness({ dzHome, project, git }) {
   return { harness, skills: skills.stdout.split('\0').filter(Boolean) };
 }
 
-async function linkHarness({ dzHome, project, repo, git }) {
+async function linkHarness({ dzHome, project, repo, git, agents = AGENTS }) {
   const { harness, skills } = await checkHarness({ dzHome, project, git });
   excludeLines(repo, ['.claude/']);
   const skillDir = realDirChain(repo, '.claude/skills');
@@ -115,11 +116,27 @@ async function linkHarness({ dzHome, project, repo, git }) {
     if (stat) fs.unlinkSync(link);
     fs.symlinkSync(target, link);
   }
-  for (const name of AGENTS) {
+  for (const name of agents) {
     const from = path.join(harness, 'agents', `${name}.md`);
     if (!lstat(from)?.isFile()) throw new GitError(`harness thiếu agent ${name}`, 'HARNESS');
     writeIfChanged(path.join(agentDir, `${name}.md`), fs.readFileSync(from, 'utf8'), 0o644);
   }
+}
+
+function linkOverlay({ dzHome, project, repo }) {
+  const home = fs.realpathSync(dzHome);
+  const source = path.join(home, 'projects', `${project.key}.overlay.yaml`);
+  if (!lstat(source)?.isFile()) throw new GitError(`thiếu overlay của project: ${source}`, 'OVERLAY');
+  excludeLines(repo, ['.harness-overlay/']);
+  const dir = realDirChain(repo, '.harness-overlay');
+  writeIfChanged(path.join(dir, 'overlay.yaml'), fs.readFileSync(source, 'utf8'), 0o644);
+  const link = path.join(dir, 'upstream');
+  const target = path.join(home, 'harness');
+  const stat = lstat(link);
+  if (stat && !stat.isSymbolicLink()) throw new GitError('.harness-overlay/upstream đã có trong repo', 'OVERLAY');
+  if (stat && fs.readlinkSync(link) === target) return;
+  if (stat) fs.unlinkSync(link);
+  fs.symlinkSync(target, link);
 }
 
 async function ensureClone({ dzHome, project, batch, sha, git = runGit }) {
@@ -148,4 +165,4 @@ async function ensureClone({ dzHome, project, batch, sha, git = runGit }) {
   return { repo, startSha: fs.readFileSync(startFile, 'utf8').trim() };
 }
 
-module.exports = { versionBranch, ensureMirror, ensureVersionBranch, ensureClone };
+module.exports = { versionBranch, ensureMirror, ensureVersionBranch, ensureClone, linkHarness, linkOverlay, FEATURE_AGENTS };

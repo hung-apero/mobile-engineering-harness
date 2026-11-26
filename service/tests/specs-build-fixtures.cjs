@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { makeHome, fakeWorkers, writeScript, OK, NOW } = require('./service-fixtures.cjs');
-const { g, commit } = require('./bugs-git-fixtures.cjs');
+const { g, commit, makeHarness } = require('./bugs-git-fixtures.cjs');
 const { asked, clarified, put } = require('./specs-flow-fixtures.cjs');
 const { tick } = require('../src/tick.cjs');
 const jobs = require('../src/jobs.cjs');
@@ -74,15 +74,17 @@ function setupBuild(t, { live = false, figma = 'none', commandsYaml = {}, projec
   g(dev, 'remote', 'add', 'origin', github);
   commit(dev, { 'app.txt': 'app\n', '.gitignore': 'local.properties\nout/\n' }, 'first');
   g(dev, 'push', '-q', 'origin', 'main');
+  const harnessCommit = makeHarness(path.join(h.dzHome, 'harness'));
   h.project('ABC1', {
-    live, forbidden: ['billing/**'], commands: { compile: ['x'], unitTest: ['x'], assemble: ['x'], distribute: ['x'], apkGlob: 'out/*.apk', ...commandsYaml }, ...project,
+    live, harnessCommit, forbidden: ['billing/**'], commands: { compile: ['x'], unitTest: ['x'], assemble: ['x'], distribute: ['x'], apkGlob: 'out/*.apk', ...commandsYaml }, ...project,
   });
+  fs.writeFileSync(path.join(h.dzHome, 'projects', 'ABC1.overlay.yaml'), 'product:\n  name: Demo\n');
   fs.mkdirSync(path.join(h.dzHome, 'workspaces', 'ABC1'), { recursive: true });
   fs.writeFileSync(path.join(h.dzHome, 'workspaces', 'ABC1', 'local.properties'), 'sdk.dir=/x\n');
   fakeAdbOnPath(t, h.root);
   const ctx = h.context({ send: async () => ({ ok: true }) });
   const fake = workers ? fakeWorkers(ctx) : { calls: [], alive: new Map() };
-  const s = { h, ctx, github, dev, now: NOW, ...fake, devices: fakeDevices(), ghCalls: [], prs: [], ghReply: null };
+  const s = { h, ctx, github, dev, harnessCommit, now: NOW, ...fake, devices: fakeDevices(), ghCalls: [], prs: [], ghReply: null };
   ctx.bugs.githubUrl = github;
   ctx.bugs.gh = async args => {
     s.ghCalls.push(args);

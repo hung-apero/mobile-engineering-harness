@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { runGit, check, pathsFor, checkBase, BATCH_ID } = require('../bugs/git.cjs');
-const { ensureMirror } = require('../bugs/workspace.cjs');
+const { ensureMirror, linkHarness, linkOverlay, FEATURE_AGENTS } = require('../bugs/workspace.cjs');
 const { hashText } = require('../text-hash.cjs');
 const { figmaKeyOf } = require('./intake.cjs');
 
@@ -54,6 +54,8 @@ async function prepareSpecClone({ dzHome, project, specId, markdown, source, fig
   if (origin.stdout.trim() !== mirror) throw Object.assign(new Error('origin của bản clone spec không phải mirror'), { code: 'ORIGIN' });
   dropExclude(repo);
   writeInputs({ repo, markdown, source, figma });
+  await linkHarness({ dzHome, project, repo, git, agents: FEATURE_AGENTS });
+  linkOverlay({ dzHome, project, repo });
   return { repo, harnessRoot: repo };
 }
 
