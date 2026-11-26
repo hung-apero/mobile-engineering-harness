@@ -10,8 +10,9 @@ const { reviewPage } = require('./page-review.cjs');
 const { releasePage } = require('./page-release.cjs');
 const { newAppPage } = require('./page-newapp.cjs');
 const { loadRelease } = require('./release-load.cjs');
-const { boardPage } = require('./page-board.cjs');
-const { boardModel } = require('../board/model.cjs');
+const { boardListPage, boardProjectPage } = require('./page-board.cjs');
+const { boardModel, projectBoard } = require('../board/model.cjs');
+const { WebError } = require('./web-error.cjs');
 
 const GET = ['GET', 'HEAD'];
 const POST = ['POST'];
@@ -41,7 +42,12 @@ const ROUTES = [
   view('review', 'review', /^\/review\/([\w-]{1,200})$/, async ({ facade, specId }) => reviewPage(await facade.review(specId))),
   tokenCall('review', 'approve', review.approve),
   tokenCall('review', 'feedback', review.feedback),
-  view('board', 'viewer', /^\/board\/([\w-]{1,200})$/, ({ ctx, viewer, now }) => boardPage(boardModel(ctx, viewer, now), now)),
+  view('board', 'viewer', /^\/board\/([\w-]{1,200})$/, ({ ctx, viewer, token, now }) => boardListPage(boardModel(ctx, viewer, now), token, now)),
+  view('board-project', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}$`), ({ ctx, viewer, token, params, now }) => {
+    const found = projectBoard(ctx, viewer, params[1], now);
+    if (!found) throw new WebError(404, 'NOT_FOUND');
+    return boardProjectPage(found, token, now);
+  }),
 ];
 
 function findRoute(pathname, search) {

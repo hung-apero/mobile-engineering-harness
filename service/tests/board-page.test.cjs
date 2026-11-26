@@ -92,7 +92,7 @@ test('each active spec lists only the products of the steps it went through', as
     ['Đang thử', ['Spec làm rõ v1 PO duyệt lúc 09:30 ngày 24/11', 'Code cho bản 1.9.2: 2/2 plan xong', 'Bản cài #2 gửi PO lúc 18:40']],
   ]);
   const { token } = tokens.issueViewer(s.db, { keys: [] }, NOW);
-  const text = (await (await serve(t, s)).get(`/board/${token}`)).text;
+  const text = (await (await serve(t, s)).get(`/board/${token}/ABC1`)).text;
   assert.match(text, /Spec làm rõ v1 PO duyệt lúc 19:02/);
   assert.match(text, /Bản cài #2 gửi PO lúc 18:40/);
 });
@@ -104,7 +104,7 @@ test('a building spec shows done over total plans from progress.json', async t =
   s.spec('ABC1', 'Màn C', 'building', { repo: path.join(s.h.root, 'missing') });
   assert.deepEqual(s.of('ABC1').specs.map(item => item.products), [['Code: 1/3 plan xong'], [], []]);
   const { token } = tokens.issueViewer(s.db, { keys: [] }, NOW);
-  assert.match((await (await serve(t, s)).get(`/board/${token}`)).text, /Code: 1\/3 plan xong/);
+  assert.match((await (await serve(t, s)).get(`/board/${token}/ABC1`)).text, /Code: 1\/3 plan xong/);
 });
 
 test('bugs are grouped by Jira status, sorted by priority, and loop bugs are marked', t => {
@@ -138,11 +138,47 @@ test('a key-scoped token sees only its projects, including waits, batches and ac
   assert.deepEqual(xyz.batches.map(item => [item.version, item.state, item.phase, item.keys]), [['1.0.0', 'running', 'fixing', ['XYZ2-9']]]);
   assert.equal(xyz.activity.at(-1).approved, 1);
   const { token } = tokens.issueViewer(s.db, { keys: ['XYZ2'] }, NOW);
-  const res = await (await serve(t, s)).get(`/board/${token}`);
-  assert.equal(res.status, 200);
-  assert.match(res.text, /Spec XYZ2/);
-  assert.match(res.text, /XYZ2-9/);
-  assert.doesNotMatch(res.text, /ABC1/);
+  const web = await serve(t, s);
+  const list = await web.get(`/board/${token}`);
+  assert.equal(list.status, 200);
+  assert.match(list.text, /Spec XYZ2/);
+  assert.doesNotMatch(list.text, /ABC1/);
+  const detail = await web.get(`/board/${token}/XYZ2`);
+  assert.equal(detail.status, 200);
+  assert.match(detail.text, /Spec XYZ2/);
+  assert.match(detail.text, /XYZ2-9/);
+  assert.doesNotMatch(detail.text, /ABC1/);
+  assert.equal((await web.get(`/board/${token}/ABC1`)).status, 404);
+});
+
+test('the board lists every project with its current status and a project opens its active phases', async t => {
+  const s = world(t);
+  s.wait(s.spec('ABC1', 'Phase 15 path', 'review', { reviewVersion: 1 }), 'ABC1', 'po');
+  s.spec('ABC1', 'Phase 16 streak', 'building', { repo: s.repo([{ status: 'done' }, {}]) });
+  s.spec('ABC1', 'Phase 9 cũ', 'done');
+  s.track('ABC1', '1.9.2');
+  board.replaceBugs(s.db, { project: 'ABC1', version: '1.9.2', bugs: [{ key: 'ABC1-1', summary: 'a', status: 'To Do', priority: 'High', assignee: null, updatedAt: '' }] }, NOW);
+  const { token } = tokens.issueViewer(s.db, { keys: [] }, NOW);
+  const web = await serve(t, s);
+  const list = (await web.get(`/board/${token}`)).text;
+  assert.match(list, new RegExp(`<a href="/board/${token}/ABC1">ABC1</a>`));
+  assert.match(list, new RegExp(`<a href="/board/${token}/XYZ2">XYZ2</a>`));
+  assert.match(list, /2 phase đang làm/);
+  assert.match(list, /Phase 15 path · Chờ PO duyệt/);
+  assert.match(list, /Phase 16 streak · Đang code/);
+  assert.match(list, /1 bug bản 1\.9\.2/);
+  assert.match(list, /Không có phase nào đang làm/);
+  assert.doesNotMatch(list, /Phase 9 cũ|Spec làm rõ v1|7 ngày qua/);
+  const detail = await web.get(`/board/${token}/ABC1`);
+  assert.equal(detail.status, 200);
+  assert.match(detail.text, /Phase 15 path/);
+  assert.match(detail.text, /Spec làm rõ v1 chờ PO duyệt/);
+  assert.match(detail.text, /Phase 16 streak/);
+  assert.match(detail.text, /Code: 1\/2 plan xong/);
+  assert.match(detail.text, /7 ngày qua/);
+  assert.match(detail.text, new RegExp(`<a href="/board/${token}">`));
+  assert.doesNotMatch(detail.text, /XYZ2/);
+  assert.equal((await web.get(`/board/${token}/NOPE9`)).status, 404);
 });
 
 test('activity counts the last 7 days by Vietnam day', t => {
@@ -172,15 +208,17 @@ test('the page refreshes every 60 seconds and has no form, button, script or qui
   s.wait(s.spec('ABC1', 'Màn duyệt', 'review'), 'ABC1', 'po', `http://10.0.0.5:8788/review/${'r'.repeat(43)}`);
   const { token } = tokens.issueViewer(s.db, { keys: [] }, NOW);
   const web = await serve(t, s);
-  const res = await web.get(`/board/${token}`);
-  assert.equal(res.status, 200);
-  assert.match(res.text, /<meta http-equiv="refresh" content="60">/);
-  assert.doesNotMatch(res.text, /<form|<button|<script|\/quiz\/|\/review\/|<b>/i);
-  assert.match(res.text, /&lt;b&gt;Màn&lt;\/b&gt;/);
-  assert.match(res.text, /Chờ PO duyệt/);
-  assert.match(res.text, /Suất chạy/);
-  assert.equal((await web.get(`/board/${token}`, { method: 'HEAD' })).status, 200);
-  assert.equal((await web.post(`/board/${token}`)).status, 405);
+  for (const url of [`/board/${token}`, `/board/${token}/ABC1`]) {
+    const res = await web.get(url);
+    assert.equal(res.status, 200, url);
+    assert.match(res.text, /<meta http-equiv="refresh" content="60">/);
+    assert.doesNotMatch(res.text, /<form|<button|<script|\/quiz\/|\/review\/|<b>/i);
+    assert.match(res.text, /&lt;b&gt;Màn&lt;\/b&gt;/);
+    assert.match(res.text, /Chờ PO duyệt/);
+    assert.match(res.text, /Suất chạy/);
+    assert.equal((await web.get(url, { method: 'HEAD' })).status, 200);
+    assert.equal((await web.post(url)).status, 405);
+  }
 });
 
 test('a sync error shows on the board with the last good time', async t => {
@@ -192,7 +230,7 @@ test('a sync error shows on the board with the last good time', async t => {
     ['1.9.2', 'chưa đồng bộ được: Jira 503, lần cuối 19:15'], ['2.0.0', 'đồng bộ Jira lúc 19:45, còn nữa'], ['2.1.0', 'chưa đồng bộ lần nào'],
   ]);
   const { token } = tokens.issueViewer(s.db, { keys: [] }, NOW);
-  assert.match((await (await serve(t, s)).get(`/board/${token}`)).text, /chưa đồng bộ được: Jira 503, lần cuối 19:15/);
+  assert.match((await (await serve(t, s)).get(`/board/${token}/ABC1`)).text, /chưa đồng bộ được: Jira 503, lần cuối 19:15/);
 });
 
 test('a viewer token cannot open home, quiz, review or any api route, and a bad token is 404 and rate limited', async t => {
@@ -205,7 +243,7 @@ test('a viewer token cannot open home, quiz, review or any api route, and a bad 
   assert.equal((await web.get(`/board/${token}`)).status, 200);
   assert.equal((await web.get(`/?k=${token}`)).status, 403);
   for (const url of ['/spec/new', '/app/new', '/release/ABC1/1.0.0']) assert.equal((await web.get(url)).status, 403, url);
-  for (const url of [`/quiz/${token}`, `/review/${token}`, `/api/quiz/${token}/state`, `/board/${expired}`, `/board/${revoked.token}`]) assert.equal((await web.get(url)).status, 404, url);
+  for (const url of [`/quiz/${token}`, `/review/${token}`, `/api/quiz/${token}/state`, `/board/${expired}`, `/board/${revoked.token}`, `/board/${expired}/ABC1`]) assert.equal((await web.get(url)).status, 404, url);
   for (const url of [`/api/quiz/${token}/submit`, `/api/review/${token}/approve`]) assert.equal((await web.post(url)).status, 404, url);
   const statuses = [];
   for (let i = 0; i < 20; i += 1) statuses.push((await web.get(`/board/${bad(i)}`)).status);

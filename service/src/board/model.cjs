@@ -57,4 +57,10 @@ function boardModel(ctx, { keys = [] }, now) {
   };
 }
 
-module.exports = { boardModel };
+function projectBoard(ctx, viewer, key, now) {
+  if (viewer.keys.length > 0 && !viewer.keys.includes(key)) return null;
+  const model = boardModel(ctx, { keys: [key] }, now);
+  return model.projects.length === 1 ? { ...model, project: model.projects[0] } : null;
+}
+
+module.exports = { boardModel, projectBoard };
