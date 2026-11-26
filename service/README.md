@@ -192,6 +192,7 @@ Mỗi nhịp, bước bug chạy nền (không chặn giám sát worker): quét 
 - Gộp vào `dz/release-<bản>` dùng chung khoá gộp với đợt bug; mỗi lúc một đợt, có cổng và build lại trước khi đẩy. Xung đột thì trả về code một lần, lần sau gác.
 - Spec gốc đổi lúc đang code (S04): PO duyệt phần đổi, chỉ plan liên quan làm lại, phần khác chạy tiếp; chưa duyệt thì chưa gửi bản cài.
 - Project chưa `live`: không push, không PR, không gửi bản cài; các việc đó ghi thành quyết định `would`. Bật `live` khi đang chờ PO thử thì gửi lại thật và hỏi PO lại.
+- `discord: true` (mặc định `false`) bật riêng phần Discord khi project chưa `live`: bot trả lời thật, ping qua webhook, kênh được phép trả lời. Jira, git push, gh, Firebase, Confluence vẫn theo `live`.
 
 ## Trang web
 

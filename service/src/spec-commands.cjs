@@ -67,7 +67,7 @@ function create(ctx, [ref, ...rest], now) {
   const project = loadedProject(ctx, flags['--project']);
   const source = path.isAbsolute(ref) ? { type: 'path', ref } : { type: 'url', ref };
   const spec = expected(() => createFacade(ctx).newSpec({ project: project.key, source, figma: flags['--figma'] ?? null, title: null }, now));
-  return [`Đã nhận spec #${spec.id} của ${project.key}`, project.live ? 'Project live' : 'Project chạy khô: không comment Confluence, không Discord'];
+  return [`Đã nhận spec #${spec.id} của ${project.key}`, project.live ? 'Project live' : `Project chạy khô: không comment Confluence${project.discord ? ', Discord vẫn bật' : ', không Discord'}`];
 }
 
 function list(ctx, [key]) {

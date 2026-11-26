@@ -6,7 +6,7 @@ const { fail, isPlainObject, isString, requireString, requireStrings, optionalPa
 const KEY = /^[A-Z][A-Z0-9]+$/;
 const REPO = /^[\w.-]+\/[\w.-]+$/;
 
-const TOP_FIELDS = ['key', 'repo', 'base', 'checkout', 'flavor', 'package', 'jiraStatus', 'people', 'specUrl', 'figmaUrl', 'excludedDevices', 'enabled', 'live', 'localFiles', 'commands', 'harnessCommit', 'forbidden', 'channel', 'roles', 'e2eDevices'];
+const TOP_FIELDS = ['key', 'repo', 'base', 'checkout', 'flavor', 'package', 'jiraStatus', 'people', 'specUrl', 'figmaUrl', 'excludedDevices', 'enabled', 'live', 'discord', 'localFiles', 'commands', 'harnessCommit', 'forbidden', 'channel', 'roles', 'e2eDevices'];
 const JIRA_FIELDS = ['waiting', 'inProgress', 'resolved', 'reopened', 'done'];
 const PEOPLE_REQUIRED = ['po', 'qa', 'devOnCall'];
 const PEOPLE_FIELDS = [...PEOPLE_REQUIRED, 'poBackup'];
@@ -104,6 +104,7 @@ function buildProject(doc, expectedKey, dzHome) {
   const { enabled } = doc;
   if (typeof enabled !== 'boolean') fail('enabled', 'phải là true hoặc false');
   if (typeof doc.live !== 'boolean') fail('live', Object.hasOwn(doc, 'live') ? 'phải là true hoặc false' : 'thiếu trường');
+  if (Object.hasOwn(doc, 'discord') && typeof doc.discord !== 'boolean') fail('discord', 'phải là true hoặc false');
   const project = {
     key,
     repo,
@@ -118,6 +119,7 @@ function buildProject(doc, expectedKey, dzHome) {
     excludedDevices: [...excludedDevices],
     enabled,
     live: doc.live,
+    discord: doc.discord ?? false,
     localFiles: buildLocalFiles(doc),
     commands: buildCommands(requireTable(doc, 'commands', COMMAND_FIELDS)),
     harnessCommit: buildHarnessCommit(doc),

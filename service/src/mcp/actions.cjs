@@ -1,4 +1,5 @@
 const inbox = require('../inbox.cjs');
+const { discordLive } = require('../discord-live.cjs');
 const { firstLine } = require('../redact.cjs');
 const { DeskError, isDefinite } = require('./desk-error.cjs');
 const { readMessage, requirePo } = require('./verify.cjs');
@@ -41,7 +42,7 @@ async function useOnce(deps, message, { action, specId }, now, work) {
 async function confirm(deps, { message, project }, content, threadName = null) {
   try {
     await deps.bot.reply({
-      channelId: message.channelId, messageId: message.messageId, content, live: project.live === true,
+      channelId: message.channelId, messageId: message.messageId, content, live: discordLive(project),
       threadName: message.inThread ? null : threadName,
     });
   } catch (error) {

@@ -1,4 +1,5 @@
 const inbox = require('./inbox.cjs');
+const { discordLive } = require('./discord-live.cjs');
 const store = require('./specs/store.cjs');
 const { isSnowflake } = require('./discord-bot.cjs');
 const { firstLine } = require('./redact.cjs');
@@ -11,7 +12,7 @@ async function versionOf(facade, kind, specId) {
 }
 
 async function bindPosted(ctx, project, group, result, now) {
-  if (project.live !== true || !result.ok || !ctx.facade || !isSnowflake(result.messageId) || !isSnowflake(result.channelId)) return;
+  if (!discordLive(project) || !result.ok || !ctx.facade || !isSnowflake(result.messageId) || !isSnowflake(result.channelId)) return;
   const marks = group.waitIds.map(() => '?').join(',');
   const links = ctx.db.prepare(`SELECT link FROM waits WHERE id IN (${marks}) AND link IS NOT NULL`).all(...group.waitIds).map(row => row.link);
   const found = [];

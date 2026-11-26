@@ -24,6 +24,7 @@ test('valid file loads', () => {
     excludedDevices: ['emulator-5554'],
     enabled: true,
     live: false,
+    discord: false,
     localFiles: ['local.properties'],
     commands: COMMANDS,
     harnessCommit: 'b4f5855',

@@ -1,4 +1,5 @@
 const fs = require('node:fs');
+const { discordLive } = require('./discord-live.cjs');
 const path = require('node:path');
 const kv = require('./kv.cjs');
 const { workingDayKey } = require('./work-hours.cjs');
@@ -67,7 +68,7 @@ async function notifyProject(ctx, project, now) {
   const groups = duePings(ctx.db, { project, rules, now, skip: project.live === true ? dryWaitIds(ctx.db, key) : undefined });
   const summary = digest(ctx.db, { project, now });
   if (!groups.length && !summary) return;
-  if (project.live !== true) {
+  if (!discordLive(project)) {
     noteWould(ctx, key, now);
     return;
   }
@@ -82,9 +83,9 @@ async function notifyProject(ctx, project, now) {
 async function notifyWeekly(ctx, projects, now) {
   const content = weeklyMissing(ctx.db, { now });
   if (!content) return;
-  const target = projects.find(project => project.live === true && hasWebhook(ctx, project.key));
+  const target = projects.find(project => discordLive(project) && hasWebhook(ctx, project.key));
   if (target) await sendReport(ctx, 'weekly', target.key, null, content, now);
-  else if (projects.some(project => project.live !== true)) noteWould(ctx, 'weekly', now);
+  else if (projects.some(project => !discordLive(project))) noteWould(ctx, 'weekly', now);
   else noteMissing(ctx, 'weekly', now);
 }
 

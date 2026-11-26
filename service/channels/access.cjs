@@ -1,3 +1,4 @@
+const { discordLive } = require('../src/discord-live.cjs');
 const PEOPLE = ['po', 'poBackup', 'qa', 'devOnCall'];
 
 const unique = list => [...new Set(list.filter(Boolean))].sort();
@@ -18,7 +19,7 @@ function allowedByChannel(projects) {
 }
 
 function liveChannels(projects) {
-  return [...byChannel(projects)].filter(([, list]) => list.every(project => project.live === true)).map(([channel]) => channel).sort();
+  return [...byChannel(projects)].filter(([, list]) => list.every(discordLive)).map(([channel]) => channel).sort();
 }
 
 function channelKeys(projects) {

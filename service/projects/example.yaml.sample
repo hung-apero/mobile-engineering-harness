@@ -20,6 +20,7 @@ figmaUrl: https://www.figma.com/design/xxxx
 excludedDevices: []
 enabled: true
 live: false
+discord: false
 localFiles: ["local.properties"]
 commands:
   compile: ["./gradlew", "compileAppDevDebugKotlin", "--no-build-cache"]
