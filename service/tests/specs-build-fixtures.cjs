@@ -1,0 +1,168 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const { makeHome, fakeWorkers, writeScript, OK, NOW } = require('./service-fixtures.cjs');
+const { g, commit, makeHarness } = require('./bugs-git-fixtures.cjs');
+const { asked, clarified, put } = require('./specs-flow-fixtures.cjs');
+const { tick } = require('../src/tick.cjs');
+const jobs = require('../src/jobs.cjs');
+const store = require('../src/specs/store.cjs');
+const bugs = require('../src/bugs/store.cjs');
+const { prepareSpecClone } = require('../src/specs/clone.cjs');
+const { createFacade } = require('../src/specs/facade.cjs');
+const { createSpecs } = require('../src/specs/wire.cjs');
+const buildCommands = require('../src/spec-build-commands.cjs');
+const commands = require('../src/spec-commands.cjs');
+
+const CHECKER = path.join(__dirname, '..', '..', 'skills', 'feature', 'scripts', 'headless_check.py');
+const VERSION = '1.9.2';
+const SERIAL = 'emu-1';
+const REVIEW_OK = { verdict: 'approve', specMatch: true, needsPo: [], forbidden: [], findings: [] };
+const step = (name, ok = true) => ({ name, ok, exitCode: ok ? 0 : 1, signal: null, timedOut: false, attempts: 1, ms: 1, tail: ok ? '' : 'đỏ' });
+const stepsEvent = list => ({ ...OK, ...(list.every(x => x.ok) ? {} : { subtype: 'error_during_execution', is_error: true }), result: JSON.stringify({ steps: list }) });
+
+function coded(repo, { files = { 'feature.txt': 'feature\n' }, plans = ['01-path'], done = plans, verdict = 'approve', findings = [], branch = null, commit: forced = null } = {}) {
+  const sha = commit(repo, files, 'feat: plan');
+  const head = branch ?? g(repo, 'symbolic-ref', '--short', 'HEAD');
+  put(repo, {
+    'progress.json': { plans: plans.map(id => ({ id, title: `Plan ${id}`, status: done.includes(id) ? 'done' : 'coding' })) },
+    'result.json': { branch: head, commit: forced ?? sha, plans: plans.map(id => ({ id, title: `Plan ${id}` })), tests: { unit: 'pass' }, review: { verdict, findings } },
+  });
+  return sha;
+}
+
+function fakeDevices() {
+  const devices = { free: [SERIAL], held: new Map(), log: [] };
+  devices.releaseAll = async ({ prefix }) => {
+    devices.log.push(`release ${prefix}`);
+    for (const [serial, holder] of devices.held) if (holder.startsWith(prefix)) devices.held.delete(serial);
+  };
+  devices.pick = async () => devices.free.find(serial => !devices.held.has(serial)) ?? null;
+  devices.acquire = async ({ holder, serial }) => {
+    devices.held.set(serial, holder);
+    return { serial, holder };
+  };
+  return devices;
+}
+
+function fakeAdbOnPath(t, root) {
+  const bin = path.join(root, 'fake-bin');
+  fs.mkdirSync(bin);
+  writeScript(path.join(bin, 'adb'), 'exit 0');
+  const before = process.env.PATH;
+  process.env.PATH = `${bin}${path.delimiter}${before}`;
+  t.after(() => { process.env.PATH = before; });
+}
+
+function world(t, { live = false, figma = 'none', commandsYaml = {}, project = {} }) {
+  const h = makeHome(t);
+  const github = path.join(h.root, 'github.git');
+  const dev = path.join(h.root, 'dev');
+  fs.mkdirSync(dev);
+  g(h.root, 'init', '-q', '--bare', '-b', 'main', github);
+  g(dev, 'init', '-q', '-b', 'main');
+  g(dev, 'remote', 'add', 'origin', github);
+  commit(dev, { 'app.txt': 'app\n', '.gitignore': 'local.properties\nout/\n' }, 'first');
+  g(dev, 'push', '-q', 'origin', 'main');
+  const harnessCommit = makeHarness(path.join(h.dzHome, 'harness'));
+  h.project('ABC1', {
+    live, harnessCommit, forbidden: ['billing/**'], commands: { compile: ['x'], unitTest: ['x'], assemble: ['x'], distribute: ['x'], apkGlob: 'out/*.apk', ...commandsYaml }, ...project,
+  });
+  fs.writeFileSync(path.join(h.dzHome, 'projects', 'ABC1.overlay.yaml'), 'product:\n  name: Demo\n');
+  fs.mkdirSync(path.join(h.dzHome, 'workspaces', 'ABC1'), { recursive: true });
+  fs.writeFileSync(path.join(h.dzHome, 'workspaces', 'ABC1', 'local.properties'), 'sdk.dir=/x\n');
+  fakeAdbOnPath(t, h.root);
+  return { h, github, dev, harnessCommit, figma };
+}
+
+function setupBuild(t, options = {}) {
+  const w = world(t, options);
+  const ctx = w.h.context({ send: async () => ({ ok: true }) });
+  const s = { ...w, ctx, now: NOW, ...fakeWorkers(ctx), devices: fakeDevices(), ghCalls: [], ghReply: null };
+  ctx.bugs.githubUrl = w.github;
+  ctx.bugs.gh = async args => {
+    s.ghCalls.push(args);
+    return { stdout: s.ghReply?.(args) ?? '[]' };
+  };
+  ctx.bugs.jira = async () => ({ search: async () => [], issue: async () => ({}), transitions: async () => [], versions: async () => [], close: async () => {} });
+  ctx.handlerDeps = { checkLock: () => {} };
+  Object.assign(ctx.specs, {
+    devices: s.devices,
+    prepareClone: args => prepareSpecClone({ ...args, githubUrl: w.github }),
+    check: createSpecs(ctx, { checker: CHECKER }).check,
+    confluence: () => { throw new Error('không được gọi Confluence'); },
+    runState: async () => { throw new Error('không được gọi state CLI'); },
+  });
+  s.facade = createFacade(ctx);
+  const text = '# [ABC1] Spec gốc\n\n## Path\nMàn path\n\n## Quiz\nMàn quiz, chờ PR #272 và nhánh `feat/clp-host-hooks`';
+  s.id = s.facade.newSpec({ project: 'ABC1', source: { type: 'pasted', text }, figma: w.figma, title: null }, NOW).id;
+  return Object.assign(s, flow(s));
+}
+
+function flow(s) {
+  const { ctx } = s;
+  const spec = () => store.getSpec(ctx.db, s.id);
+  const repo = () => spec().data.repo;
+  const step1 = async (ms = 10000) => {
+    s.now += ms;
+    await tick(ctx, s.now);
+    await Promise.all([ctx.specStepPending, ctx.bugStepPending]);
+  };
+  const running = kind => jobs.listJobs(ctx.db, { states: ['running'] }).filter(job => job.kind === kind);
+  const until = async (check, label = '') => {
+    for (let i = 0; i < 14; i++) {
+      if (check()) return;
+      await step1();
+    }
+    const { state, data } = spec();
+    throw new Error(`chưa tới ${label}: ${JSON.stringify({ state, parked: data.parked, needs: data.needs, build: data.build })} ${JSON.stringify(jobs.listJobs(ctx.db).slice(-2))}`);
+  };
+  const finish = async (work, { kind = 'spec', event = OK } = {}) => {
+    await until(() => running(kind).length === 1, `việc ${kind}`);
+    const [job] = running(kind);
+    work?.(repo(), job);
+    fs.appendFileSync(job.logFile, `${JSON.stringify(typeof event === 'function' ? event(job) : event)}\n`);
+    s.alive.clear();
+    await step1();
+    return job;
+  };
+  const apk = job => {
+    const dir = path.join(job.payload.worktree, 'out');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'app.apk'), `apk ${job.payload.sha}`);
+  };
+  const api = {
+    spec, repo, running, until, finish, tick: step1,
+    state: name => until(() => spec().state === name, name),
+    cmd: (...args) => commands.spec(ctx, args, s.now),
+    startBuild: () => buildCommands.build(ctx, spec(), [String(s.id), '--version', VERSION], s.now),
+    toApproved: async () => {
+      await finish(dir => asked(dir));
+      s.facade.saveDraft(s.id, { qid: 'Q1', choice: 'B', text: '' }, 'po', s.now);
+      s.facade.submit(s.id, 'po', s.now);
+      await finish(dir => clarified(dir));
+      const { sha } = s.facade.review(s.id);
+      const out = await s.facade.approve(s.id, { sha, quote: 'Tôi duyệt' }, 'po', s.now);
+      if (!out.ok) throw new Error(out.error);
+    },
+    toBuilding: async () => {
+      await api.toApproved();
+      api.startBuild();
+      await until(() => running('spec').length === 1, 'việc build');
+    },
+    code: options => finish(dir => coded(dir, options)),
+    review: (result = REVIEW_OK) => finish(null, { event: { ...OK, result: '', structured_output: result } }),
+    gate: (ok = true) => finish(null, { kind: 'gate', event: stepsEvent([step('compile'), step('unitTest', ok)]) }),
+    build: (ok = true) => finish((dir, job) => ok && apk(job), { kind: 'build', event: job => stepsEvent([step('verify'), step('assemble', ok), ...(ok && job.payload.distribute ? [step('distribute')] : [])]) }),
+    approveTrial: sha => s.facade.approve(s.id, { sha, quote: 'Tôi duyệt bản cài' }, 'po', s.now),
+    headless: () => JSON.parse(fs.readFileSync(path.join(repo(), '.harness-run/inputs/headless.json'), 'utf8')),
+    waits: () => ctx.db.prepare("SELECT role, subject, link FROM waits WHERE state = 'open' ORDER BY id").all(),
+    decisions: action => ctx.db.prepare('SELECT action, code, evidence FROM decisions WHERE action = ? ORDER BY id').all(action).map(row => ({ ...row, evidence: JSON.parse(row.evidence) })),
+    would: () => ctx.db.prepare("SELECT evidence FROM decisions WHERE action = 'would' ORDER BY id").all().map(row => JSON.parse(row.evidence).text),
+    batches: () => bugs.listBatches(ctx.db, { project: 'ABC1' }),
+    mirror: path.join(s.h.dzHome, 'workspaces', 'ABC1', 'mirror.git'),
+    tree: sha => g(path.join(s.h.dzHome, 'workspaces', 'ABC1', 'mirror.git'), 'ls-tree', '-r', '--name-only', sha).split('\n'),
+  };
+  return api;
+}
+
+module.exports = { setupBuild, coded, put, commit, g, step, stepsEvent, REVIEW_OK, VERSION, SERIAL, OK };

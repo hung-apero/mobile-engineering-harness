@@ -36,7 +36,7 @@ function writeRework(run) {
 function reworkLine(list = []) {
   if (!Array.isArray(list) || list.some(({ file, plans }) => !FILE.test(file) || !plans.every(id => PLAN.test(id)))) throw new Error('payload.rework không hợp lệ');
   if (!list.length) return [];
-  const named = list.map(({ file, plans }) => `.learn-app/${file}${plans.length ? ` (plan ${plans.join(', ')})` : ''}`).join('; ');
+  const named = list.map(({ file, plans }) => `.harness-run/${file}${plans.length ? ` (plan ${plans.join(', ')})` : ''}`).join('; ');
   return [`- Lượt này làm lại theo yêu cầu của service. Trước mọi việc khác, đọc hết: ${named}. Làm đủ từng ý trong các file đó theo mục "rework" của skill; code đã có hay tính năng đã done không có nghĩa là đã xong.`];
 }
 

@@ -69,7 +69,7 @@ function prepare(job, options) {
       ...isolatedEnv(dzHome, { config: NO_PUSH }),
       ...IDENTITY,
       ...(harness ? { HARNESS_HEADLESS: '1' } : { LEARN_APP_HEADLESS: '1', LEARN_APP_TRACKING: project.live === true ? null : 'off' }),
-      ...(building && { LEARN_APP_PARALLEL: String(Math.max(1, job.slotsGranted ?? 1)) }),
+      ...(smoke && { LEARN_APP_PARALLEL: String(Math.max(1, job.slotsGranted ?? 1)) }),
       ...deviceEnv(job, options),
     },
   };

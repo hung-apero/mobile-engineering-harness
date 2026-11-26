@@ -3,6 +3,7 @@ const files = require('./repo-files.cjs');
 const { patch, decide, findJob, park } = require('./kit.cjs');
 const { writeRework, reworkOf } = require('./rework.cjs');
 const { hashText } = require('../text-hash.cjs');
+const { branchOf } = require('./build-result.cjs');
 
 const MAX_TRIES = 2;
 const MAX_REASON = 500;
@@ -20,11 +21,12 @@ const fresh = (spec, name, tries = 1) => {
 const keyOf = spec => `${spec.id}#${spec.data.segment.name}-${spec.data.segment.serial}`;
 const jobOf = run => findJob(run.db, { project: run.project.key, kind: 'spec', key: keyOf(run.spec) });
 
-function writeConfig(run) {
+function writeConfig(run, slots) {
   const { repo, app, figmaUrl, segment, notes } = run.spec.data;
   const rework = reworkOf(run.spec).map(item => item.file);
   writeRework(run);
-  const config = { spec: 'inputs/spec-v1.md', figma: figmaUrl ? { url: figmaUrl } : null, app, case: 'existing', segment: LEARN_SEGMENTS[segment.name] ?? segment.name, ...(notes && { notes }), ...(rework.length && { rework }) };
+  const build = segment.name === 'build' ? { slots, branch: branchOf(run.spec) } : {};
+  const config = { spec: 'inputs/spec-v1.md', figma: figmaUrl ? { url: figmaUrl } : null, app, case: 'existing', segment: LEARN_SEGMENTS[segment.name] ?? segment.name, ...(notes && { notes }), ...(rework.length && { rework }), ...build };
   files.write(repo, 'inputs/headless.json', `${JSON.stringify(config, null, 1)}\n`);
   files.remove(repo, 'blocked.json');
   files.remove(repo, 'headless-blocked.json');
@@ -38,9 +40,10 @@ function forged({ repo, rawSha }) {
 function launch(run, { slots = 1, extra = {} } = {}) {
   const { repo, figmaUrl, segment } = run.spec.data;
   if (forged(run.spec.data)) return park(run, 'worker đã sửa .harness-run/inputs/spec-v1.md, không chạy tiếp trên bản này; dz spec cancel rồi gửi lại spec');
-  writeConfig(run);
+  writeConfig(run, slots);
   const rework = reworkOf(run.spec);
-  const payload = { specId: run.spec.id, segment: segment.name, repo, figma: Boolean(figmaUrl), ...(rework.length && { rework }), ...extra };
+  const branch = segment.name === 'build' ? { branch: branchOf(run.spec) } : {};
+  const payload = { specId: run.spec.id, segment: segment.name, repo, figma: Boolean(figmaUrl), ...(rework.length && { rework }), ...branch, ...extra };
   patch(run, { segment: { ...run.spec.data.segment, inputsSha: files.inputsSha(repo) } });
   jobs.enqueue(run.db, { project: run.project.key, kind: 'spec', key: keyOf(run.spec), priority: 1, slots, payload }, run.now);
 }

@@ -20,15 +20,15 @@ function make(t) {
   return { ...w, specRepo: repo, options, job, lock };
 }
 
-test('the code worker gets the granted slots, no push and no device', t => {
+test('the code worker runs the harness headless, with no push and no device', t => {
   const w = make(t);
-  const out = prepare(w.job({ segment: 'build' }), w.options());
-  assert.equal(out.env.LEARN_APP_PARALLEL, '2');
-  assert.equal(out.env.ANDROID_SERIAL, undefined);
+  const out = prepare(w.job({ segment: 'build', branch: 'dz/spec-7' }), w.options());
+  assert.equal(out.env.HARNESS_HEADLESS, '1');
+  assert.deepEqual([out.env.LEARN_APP_PARALLEL, out.env.LEARN_APP_HEADLESS, out.env.ANDROID_SERIAL], [undefined, undefined, undefined]);
+  assert.deepEqual(out.pluginDirs, []);
   for (const rule of ['Bash(adb:*)', 'Bash(emulator:*)', 'Bash(git push:*)', 'Bash(gh:*)', 'Bash(*platform-tools/adb*)']) assert.ok(out.disallowedTools.includes(rule), rule);
   assert.notEqual(out.permissionMode, 'bypassPermissions');
-  assert.equal(prepare(w.job({ segment: 'build' }, { slotsGranted: 0 }), w.options()).env.LEARN_APP_PARALLEL, '1');
-  assert.equal('LEARN_APP_PARALLEL' in prepare(w.job({ segment: 'ask' }), w.options()).env, false);
+  assert.throws(() => prepare(w.job({ segment: 'build', branch: 'main' }), w.options()), /payload\.branch/);
 });
 
 test('the smoke worker runs only on the device it still holds', t => {
