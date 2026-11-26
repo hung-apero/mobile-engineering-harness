@@ -98,6 +98,18 @@ test('a sender that throws counts as a failed ping', async t => {
   assert.ok(!JSON.stringify(h.logs()).includes('secret'));
 });
 
+test('a PO wait opened in the evening is sent at once with its link and the PO tag', async t => {
+  const { ctx, sent } = setup(t);
+  openWait(ctx.db, { project: 'ABC1', role: 'po', subject: 'Trả lời câu hỏi spec', link: 'http://10.0.0.5:8788/quiz/abc' }, at('2026-11-26T18:30'));
+  const tagged = () => sent.filter(message => message.mentions?.length);
+  await tick(ctx, at('2026-11-26T18:30'));
+  assert.equal(tagged().length, 1);
+  assert.deepEqual(tagged()[0].mentions, ['123456789012345678']);
+  assert.match(tagged()[0].content, /http:\/\/10\.0\.0\.5:8788\/quiz\/abc/);
+  await tick(ctx, at('2026-11-26T19:30'));
+  assert.equal(tagged().length, 1);
+});
+
 test('outside working hours nothing is pinged', async t => {
   const { ctx, sent } = setup(t);
   openWait(ctx.db, { project: 'ABC1', role: 'dev', subject: 'x' }, NOW - 5 * DAY);

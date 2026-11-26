@@ -26,7 +26,10 @@ function intervalMinutes(wait, rules) {
   return wait.ping_count > 0 && wait.ping_count >= p.daily_after_ping ? WORK_MINUTES_PER_DAY : p.every_working_hours * 60;
 }
 
+const isNotice = wait => wait.role === 'po' && wait.ping_count === 0;
+
 function dueAt(wait, rules) {
+  if (isNotice(wait)) return wait.opened_at;
   const base = wait.ping_count === 0 ? wait.opened_at : wait.last_ping_at;
   return addWorkingMinutes(addWorkingMinutes(base, intervalMinutes(wait, rules)), 0);
 }
@@ -39,11 +42,11 @@ function mentionsFor(role, people, waits, rules) {
 }
 
 function duePings(db, { project, rules, now, skip = new Set() }) {
-  if (!isWorking(now)) return [];
+  const working = isWorking(now);
   const open = db
     .prepare(`SELECT * FROM waits WHERE project = ? AND state = 'open' AND (retry_at IS NULL OR retry_at <= ?) ORDER BY id`)
     .all(project.key, now)
-    .filter(w => !skip.has(w.id));
+    .filter(w => !skip.has(w.id) && (working || isNotice(w)));
   const groups = [];
   for (const role of Object.keys(ROLES)) {
     const waits = open.filter(w => w.role === role);

@@ -127,7 +127,7 @@ Chỉ một `dz run` chạy một lúc; lần thứ hai thoát với lỗi nêu 
 
 ## Sửa rule
 
-Rule mặc định ở `service/rules/default.yaml` (slot, nhịp nhắc người, ngưỡng đĩa, ngưỡng quota...). Dịch vụ đọc lại file ở mỗi nhịp (10 giây), không cần khởi động lại; file sai thì bản đúng gần nhất được giữ và `dz status` báo lỗi. Giờ làm việc (9–18h, thứ Hai đến thứ Sáu, giờ Việt Nam) nằm trong code, không sửa được bằng rule.
+Rule mặc định ở `service/rules/default.yaml` (slot, nhịp nhắc người, ngưỡng đĩa, ngưỡng quota...). Dịch vụ đọc lại file ở mỗi nhịp (10 giây), không cần khởi động lại; file sai thì bản đúng gần nhất được giữ và `dz status` báo lỗi. Giờ làm việc (9–18h, thứ Hai đến thứ Sáu, giờ Việt Nam) nằm trong code, không sửa được bằng rule. Việc chờ PO (quiz, duyệt, thử bản cài) được báo ngay khi mở, kể cả ngoài giờ, kèm link và tag PO; các lần nhắc sau theo `P01` và giờ làm việc. Chờ của QA và dev chỉ nhắc trong giờ làm việc.
 
 Mỗi quyết định ghi kèm số phiên bản rule. Dùng `DZ_RULES_DIR` để trỏ sang thư mục rule khác.
 
