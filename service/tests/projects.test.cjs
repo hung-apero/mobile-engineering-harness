@@ -234,3 +234,11 @@ test('channel and roles are optional Discord ids; people stay', () => {
   for (const channel of [423456789012345, '123', '', '423456789012345678/x']) assert.match(rejected({ channel }).errors[0].message, /channel/);
   for (const roles of [{ po: 'PO' }, { po: 5 }, { boss: '523456789012345678' }, [], 'x']) assert.match(rejected({ roles }).errors[0].message, /roles/);
 });
+
+test('an overlay file next to the project is not read as a project', () => {
+  const { dzHome, dir } = setup();
+  fs.writeFileSync(path.join(dir, 'ABC1.yaml'), yamlFor('ABC1', dzHome));
+  fs.writeFileSync(path.join(dir, 'ABC1.overlay.yaml'), 'product: abc1\n');
+  const { projects, errors } = loadProjects(dir, { dzHome });
+  assert.deepEqual([[...projects.keys()], errors], [['ABC1'], []]);
+});

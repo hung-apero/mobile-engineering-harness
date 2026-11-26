@@ -13,6 +13,7 @@ const { checkSandbox, checkKeychain } = require('./doctor-sandbox.cjs');
 const { checkConfluence, checkFigma, checkWeb } = require('./doctor-specs.cjs');
 const { deskChecks } = require('./desk-doctor.cjs');
 const { checkE2e } = require('./doctor-e2e.cjs');
+const { checkOverlay, checkPython, harnessFilesProblem } = require('./doctor-v2.cjs');
 
 const MIN_NODE = 24;
 const MIN_CLAUDE = [2, 1, 332];
@@ -170,7 +171,9 @@ function checkHarness({ dzHome, projectsDir, exec, baseEnv }) {
   if (wrong.length) return missing(name, `ở ${sha.slice(0, 8)}, lệch ghim của ${wrong.map(p => `${p.key} (${p.harnessCommit})`).join(', ')}`);
   const dirty = exec('git', ['-C', dir, 'status', '--porcelain', '--untracked-files=no'], baseEnv);
   if (!dirty.ok) return missing(name, why(dirty));
-  return dirty.stdout.trim() ? missing(name, 'có file bị sửa so với commit đã ghim') : ok(name, sha.slice(0, 8));
+  if (dirty.stdout.trim()) return missing(name, 'có file bị sửa so với commit đã ghim');
+  const lost = harnessFilesProblem(dir);
+  return lost ? missing(name, lost) : ok(name, sha.slice(0, 8));
 }
 
 function doctor({ env = process.env, exec = runCommand, freeGb = health.freeGb, home = os.homedir(), codeDir = CODE_DIR } = {}) {
@@ -179,7 +182,7 @@ function doctor({ env = process.env, exec = runCommand, freeGb = health.freeGb, 
   const checks = {
     node: checkNode, claude: checkClaude, 'đăng nhập claude': checkLogin, gh: checkGh, adb: checkAdb, 'đĩa trống': checkDisk,
     'file bí mật': checkSecrets, 'nguồn điện': checkPower, 'mã dịch vụ': checkCode, rule: checkRules, project: checkProjects,
-    'jira ghi': checkJiraWrite, 'jira đọc': checkJiraRead, harness: checkHarness,
+    'jira ghi': checkJiraWrite, 'jira đọc': checkJiraRead, harness: checkHarness, overlay: checkOverlay, python3: checkPython,
     'confluence đọc': checkConfluence, 'figma đọc': checkFigma, 'trang web': checkWeb, desk: deskChecks, e2e: checkE2e,
     sandbox: checkSandbox, keychain: checkKeychain,
   };

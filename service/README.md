@@ -43,6 +43,19 @@ sudo pmset -a autorestart 1 sleep 0
 
 Dịch vụ chạy dưới `caffeinate -i` nên không ngủ khi đang chạy.
 
+## Chạy v2 song song
+
+v2 là bản fork `~/Desktop/src/dev-zone` (nhánh `dev-zone`), dùng harness làm engine cho spec và bug. v1 ở `~/.dev-zone` giữ nguyên, không đụng.
+
+- Thư mục và cổng riêng: `export DZ_HOME=~/.dev-zone-v2 DZ_WEB_PORT=8788`.
+- Harness ghim: `git clone ~/Desktop/src/dev-zone $DZ_HOME/harness` rồi `git -C $DZ_HOME/harness checkout <harnessCommit>`; `harnessCommit` trong `$DZ_HOME/projects/<KEY>.yaml` phải trùng commit này.
+- Overlay của mỗi project bật: `$DZ_HOME/projects/<KEY>.overlay.yaml` (chép từ `.harness-overlay/overlay.yaml` của app). Bản clone spec nhận nó ở `.harness-overlay/overlay.yaml`, `upstream` trỏ vào harness ghim.
+- Bài thử: `live: false`, `discord: true` — Discord chạy thật, Jira, git push, gh, Firebase, Confluence vẫn khô.
+- Chạy bằng `cd service && node bin/dz.cjs run` trong terminal; không `dz install`, không launchd.
+- Bot Discord chỉ một phiên nhận tin: tắt bàn điều phối của v1 (`DZ_HOME=~/.dev-zone node bin/dz.cjs desk stop` từ mã v1) trước khi `desk start` ở v2.
+- `dz doctor` ở v2 kiểm thêm overlay từng project bật, `python3` ≥ 3.9, harness ghim có `skills/feature/scripts/headless_check.py` và `skills/spec-clear/SKILL.md`.
+- `dz spec build` bị chặn ở v2 tới khi có đoạn build mới; spec không cần nữa thì `dz spec cancel <id>`.
+
 ## Gỡ
 
 ```

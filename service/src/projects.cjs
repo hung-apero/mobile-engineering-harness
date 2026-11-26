@@ -137,7 +137,7 @@ function loadProjects(dir, { dzHome }) {
   const home = deepestRealpath(path.resolve(dzHome));
   const projects = new Map();
   const errors = [];
-  const files = fs.readdirSync(dir).filter(name => path.extname(name) === '.yaml').sort();
+  const files = fs.readdirSync(dir).filter(name => path.extname(name) === '.yaml' && !name.endsWith('.overlay.yaml')).sort();
   for (const file of files) {
     try {
       const doc = YAML.parse(fs.readFileSync(path.join(dir, file), 'utf8'));

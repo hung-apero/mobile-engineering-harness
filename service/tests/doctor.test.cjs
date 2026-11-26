@@ -16,6 +16,7 @@ function tools(overrides = {}) {
     pmset: () => ({ ok: true, stdout: PMSET }),
     maestro: () => ({ ok: true, stdout: '1.40.0' }),
     git: () => ({ ok: true, stdout: '' }),
+    python3: () => ({ ok: true, stdout: '3.12\n' }),
     'sandbox-exec': () => ({ ok: true, stdout: '' }),
     security: () => ({ ok: false, stdout: '' }),
     ...overrides,
@@ -30,6 +31,14 @@ function setup(t) {
   return { h, run: (overrides, extra = {}, options = {}) => doctor({ env: { ...h.env, ...extra }, exec: tools(overrides), home: h.root, codeDir: h.root, ...options }) };
 }
 
+const pinned = (h, files = ['skills/feature/scripts/headless_check.py', 'skills/spec-clear/SKILL.md']) => {
+  for (const file of files) {
+    fs.mkdirSync(path.dirname(path.join(h.dzHome, 'harness', file)), { recursive: true });
+    fs.writeFileSync(path.join(h.dzHome, 'harness', file), 'x');
+  }
+  fs.mkdirSync(path.join(h.dzHome, 'harness', '.git'), { recursive: true });
+};
+const atPin = { git: args => ({ ok: true, stdout: args.includes('rev-parse') ? 'b4f5855abc\n' : '' }) };
 const find = (checks, name) => checks.find(c => c.name === name);
 
 test('everything in place: every check passes and no output is echoed', t => {
@@ -38,7 +47,8 @@ test('everything in place: every check passes and no output is echoed', t => {
   jiraFile(h, 'jira-mcp.json', WRITE_ENV);
   jiraFile(h, 'jira-read.json', READ_ENV);
   for (const [file, name] of [['confluence-read.json', 'confluence'], ['figma-read.json', 'framelink-figma']]) fs.writeFileSync(path.join(h.dzHome, 'secrets', file), JSON.stringify({ mcpServers: { [name]: { command: 'uvx' } } }), { mode: 0o600 });
-  fs.mkdirSync(path.join(h.dzHome, 'harness', '.git'), { recursive: true });
+  pinned(h);
+  fs.writeFileSync(path.join(h.dzHome, 'projects', 'ABC1.overlay.yaml'), 'product: abc1\n');
   fs.mkdirSync(path.join(h.dzHome, 'android-test-harness'));
   fs.mkdirSync(path.join(h.dzHome, 'e2e'));
   fs.writeFileSync(path.join(h.dzHome, 'e2e', 'ABC1.json'), '{}');
@@ -161,11 +171,36 @@ test('jira config files: missing is a warning, a loose mode or write tools in th
 test('harness: absent is a warning, a head that is not the pinned commit or a dirty tree is missing', t => {
   const { h, run } = setup(t);
   assert.equal(find(run(), 'harness').level, 'CẢNH BÁO');
-  fs.mkdirSync(path.join(h.dzHome, 'harness', '.git'), { recursive: true });
+  pinned(h);
   const pin = 'b4f5855';
   const at = (head, dirty = '') => run({ git: args => ({ ok: true, stdout: args.includes('rev-parse') ? head : dirty }) });
   assert.equal(find(at(`${pin}aaaa\n`), 'harness').level, 'ĐẠT');
   assert.match(find(at('c0ffee1234\n'), 'harness').detail, /lệch ghim của ABC1/);
   assert.match(find(at(`${pin}aaaa\n`, ' M skills/x\n'), 'harness').detail, /file bị sửa/);
   assert.equal(find(run({ git: () => ({ ok: false, missing: true, stdout: '' }) }), 'harness').level, 'THIẾU');
+});
+
+test('doctor reports missing overlay', t => {
+  const { h, run } = setup(t);
+  assert.match(find(run(), 'overlay').detail, /ABC1\.overlay\.yaml/);
+  assert.equal(find(run(), 'overlay').level, 'THIẾU');
+  fs.writeFileSync(path.join(h.dzHome, 'projects', 'ABC1.overlay.yaml'), 'product: abc1\n');
+  assert.equal(find(run(), 'overlay').level, 'ĐẠT');
+});
+
+test('doctor reports pinned harness without headless checker', t => {
+  const { h, run } = setup(t);
+  pinned(h, ['skills/spec-clear/SKILL.md']);
+  const check = find(run(atPin), 'harness');
+  assert.equal(check.level, 'THIẾU');
+  assert.match(check.detail, /headless_check\.py/);
+  pinned(h);
+  assert.equal(find(run(atPin), 'harness').level, 'ĐẠT');
+});
+
+test('doctor wants python3 3.9 or newer', t => {
+  const { run } = setup(t);
+  assert.equal(find(run({ python3: () => ({ ok: true, stdout: '3.8\n' }) }), 'python3').level, 'THIẾU');
+  assert.equal(find(run({ python3: () => ({ ok: false, missing: true, stdout: '' }) }), 'python3').level, 'THIẾU');
+  assert.deepEqual(find(run({ python3: () => ({ ok: true, stdout: '3.12\n' }) }), 'python3'), { level: 'ĐẠT', name: 'python3', detail: '3.12' });
 });
