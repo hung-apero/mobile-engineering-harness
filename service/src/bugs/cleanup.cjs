@@ -89,4 +89,4 @@ async function closeJobs({ db, project, batchId, now }) {
   return mine.map(job => job.id);
 }
 
-module.exports = { closeJobs, releaseDevices, stopProcesses, removeBatchFiles, pruneAbandoned };
+module.exports = { closeJobs, releaseDevices, stopProcesses, removeBatchFiles, pruneAbandoned, stopJob };

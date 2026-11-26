@@ -11,6 +11,7 @@ const { fresh, NAMES } = require('./specs/segment.cjs');
 const { openItems } = require('./specs/provisional.cjs');
 const { closeWaits, linkFor, webBase, nameOf } = require('./specs/kit.cjs');
 const building = require('./spec-build-commands.cjs');
+const { cancelSpec } = require('./specs/cancel.cjs');
 const { record } = require('./decisions.cjs');
 const { ruleVersionOf } = require('./bugs/effects.cjs');
 const { clearParked } = require('./blocks.cjs');
@@ -21,7 +22,7 @@ const { clock } = require('./status.cjs');
 
 const KEY = /^[A-Z][A-Z0-9]+$/;
 const ID = /^[1-9]\d{0,14}$/;
-const SUBS = { show: validId, link: validId, refresh: validId, retry: validRetry, build: building.validBuild, prereq: building.validPrereq, list: args => args.length === 0 || (args.length === 1 && KEY.test(args[0])) };
+const SUBS = { show: validId, link: validId, refresh: validId, retry: validRetry, cancel: validId, build: building.validBuild, prereq: building.validPrereq, list: args => args.length === 0 || (args.length === 1 && KEY.test(args[0])) };
 
 function validId(args) {
   return args.length === 1 && ID.test(args[0]);
@@ -117,6 +118,11 @@ async function refresh(ctx, [id], now) {
   return [`Spec #${id} đã đổi: đọc lại từ đầu kèm câu trả lời cũ, lời duyệt cũ hết hiệu lực`];
 }
 
+async function cancel(ctx, [id], now) {
+  const { from } = await cancelSpec(ctx, specOf(ctx, id).id, now);
+  return [`Spec #${id} đã huỷ (từ ${from})`];
+}
+
 function retryJob(ctx, job, now) {
   jobs.retry(ctx.db, job.id, now);
   kv.del(ctx.db, failuresKey(job.id));
@@ -144,7 +150,7 @@ async function spec(ctx, args, now) {
   const [first, ...rest] = args;
   if (first === 'build') throw new ExpectedError('đoạn build chưa có ở v2');
   if (first === 'prereq') return building.prereq(ctx, specOf(ctx, rest[0]), rest, now);
-  const run = { list, show, link, refresh, retry }[Object.hasOwn(SUBS, first) ? first : ''];
+  const run = { list, show, link, refresh, retry, cancel }[Object.hasOwn(SUBS, first) ? first : ''];
   return run ? run(ctx, rest, now) : create(ctx, args, now);
 }
 

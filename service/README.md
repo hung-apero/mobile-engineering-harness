@@ -91,6 +91,7 @@ Mỗi project một file `~/.dev-zone/projects/<KEY>.yaml`. Mẫu: `projects/exa
 | `dz spec build <id> --version <v>` | bắt đầu code spec đã duyệt cho bản `<v>`; không chạy lệnh này thì spec ở nguyên `approved` |
 | `dz spec prereq <id> [--pr [owner/repo#]N] [--branch owner/repo:nhánh] [--clear]` | đặt điều kiện trước (PR đã merge, nhánh đã có); không cờ thì xem điều kiện và gợi ý đọc từ spec (gợi ý không tự áp dụng) |
 | `dz spec retry <id> [--figma URL\|none]` | chạy lại spec đang gác hoặc cần bổ sung |
+| `dz spec cancel <id>` | huỷ spec: đóng mọi chờ, gác việc đang chạy của spec, máy bỏ qua spec này (mã `OP01`); gọi lại không ghi thêm |
 | `dz release status <KEY> <version>` | 6 điều kiện release, đóng bản, E2E, bug đã hoãn |
 | `dz release defer <KEY> <version> <TICKET…> --by <tên>` | hoãn bug Medium/Low đang mở của bản khỏi điều kiện 4 |
 | `dz release e2e <KEY> <version> accept\|continue --by <tên>` | QA chấp nhận kết quả E2E trên cây hiện tại / để sửa tiếp |
@@ -180,7 +181,7 @@ Mỗi nhịp, bước bug chạy nền (không chặn giám sát worker): quét 
 
 ### Code tính năng
 
-`approved → waiting-prereq → building → (provisional) → smoking → uidiff → reviewing → candidate → po-trial → landing → done`. Chạy khô thì kết thúc ở `landed-dry`; `dz bugs reset-dry` đưa spec đó về `po-trial`. `needs-input` và `parked` rẽ ra từ mọi bước; `dz spec retry` quay lại đúng bước đó.
+`approved → waiting-prereq → building → (provisional) → smoking → uidiff → reviewing → candidate → po-trial → landing → done`. Chạy khô thì kết thúc ở `landed-dry`; `dz bugs reset-dry` đưa spec đó về `po-trial`. `needs-input` và `parked` rẽ ra từ mọi bước; `dz spec retry` quay lại đúng bước đó. `dz spec cancel` đưa spec về `cancelled` từ bất kỳ bước nào, không quay lại được.
 
 - Điều kiện trước kiểm bằng `gh` chỉ đọc, 15 phút một lần; chưa đủ thì mở việc chờ dev.
 - Worker code chạy `learn-app` tới hết gộp plan, `LEARN_APP_PARALLEL` bằng số suất được cấp, không có adb, không push. Đĩa còn dưới 40 GB thì chỉ xin một suất. Worker chết giữa plan thì lượt sau làm tiếp trong đúng worktree của plan đó.
