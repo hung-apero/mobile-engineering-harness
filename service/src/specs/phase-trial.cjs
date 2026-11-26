@@ -1,6 +1,6 @@
 const files = require('./repo-files.cjs');
 const { pendingChange, askChange } = require('./change.cjs');
-const { openItems, toBuilding } = require('./provisional.cjs');
+const { openItems, openRound, toBuilding } = require('./provisional.cjs');
 const { trialNotes } = require('./trial-notes.cjs');
 const { oneLine } = require('./answers.cjs');
 const { fresh } = require('./segment.cjs');
@@ -52,6 +52,7 @@ async function poTrial(run) {
     finishTrial(run);
     return true;
   }
+  if (openItems(run.spec).length) openRound(run);
   const count = trialNotes(run.spec).length;
   openOnce(run, `trial-${trial.sha.slice(0, 12)}`, 'po', `Thử bản cài ${nameOf(run.spec)}, commit ${trial.sha.slice(0, 12)}${count ? ` (${count} điểm cần lưu ý ở đầu trang)` : ''}`, () => linkFor(run.ctx, run.spec.id, 'review', run.now));
   return false;

@@ -26,7 +26,8 @@ function intervalMinutes(wait, rules) {
   return wait.ping_count > 0 && wait.ping_count >= p.daily_after_ping ? WORK_MINUTES_PER_DAY : p.every_working_hours * 60;
 }
 
-const isNotice = wait => wait.role === 'po' && wait.ping_count === 0;
+const NOTICE_ROLES = ['po', 'dev'];
+const isNotice = wait => NOTICE_ROLES.includes(wait.role) && wait.ping_count === 0;
 
 function dueAt(wait, rules) {
   if (isNotice(wait)) return wait.opened_at;

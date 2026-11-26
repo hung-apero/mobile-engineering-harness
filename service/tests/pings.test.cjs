@@ -51,11 +51,13 @@ test('outside working hours a new PO wait is announced alone, older reminders st
   assert.doesNotMatch(groups[0].content, /spec cũ/);
 });
 
-test('QA and dev waits are not announced outside working hours', () => {
+test('a new dev wait is announced at once, even outside working hours; QA waits are not', () => {
   const db = memDb();
   open(db, 'bug', t('2026-11-26T20:00:00'), 'dev');
   open(db, 'test', t('2026-11-26T20:00:00'), 'qa');
-  assert.equal(due(db, t('2026-11-26T20:00:00')).length, 0);
+  const groups = due(db, t('2026-11-26T20:00:00'));
+  assert.deepEqual(groups.map(g => g.role), ['dev']);
+  assert.deepEqual(groups[0].mentions, [people.devOnCall]);
 });
 
 test('third ping mentions PO and backup; no backup configured → PO only', () => {
@@ -130,10 +132,13 @@ test('outside working hours nothing is due; overdue one is delivered at the next
   assert.equal(due(db, t('2026-11-26T09:00:00')).length, 1);
 });
 
-test('QA and dev: first due after every_working_days, then same interval after each ping', () => {
+test('QA: first due after every_working_days; dev: announced at once, then the same daily interval', () => {
   const db = memDb();
   open(db, 'qa item', t('2026-11-25T10:00:00'), 'qa');
   open(db, 'dev item', t('2026-11-25T10:00:00'), 'dev');
+  const [notice] = due(db, t('2026-11-25T10:00:00'));
+  assert.equal(notice.role, 'dev');
+  ping(db, notice, t('2026-11-25T10:00:00'));
   assert.equal(due(db, t('2026-11-26T09:59:00')).length, 0);
   const groups = due(db, t('2026-11-26T10:00:00'));
   assert.deepEqual(groups.map(g => g.role), ['qa', 'dev']);

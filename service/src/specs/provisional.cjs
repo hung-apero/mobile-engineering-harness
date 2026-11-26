@@ -47,7 +47,7 @@ function addQuestions(run, questions) {
     return { key, title: text(question), options, value: 'A', why: 'Người kiểm code thấy điểm cần PO chốt', hard: HARD.test(question) };
   });
   patch(run, { prov: merge(provOf(run.spec), found) });
-  openRound(run);
+  if (holdsInstall(run.spec)) openRound(run);
 }
 
 function settleRound(run) {
@@ -89,4 +89,4 @@ function applyAnswers(run) {
   return true;
 }
 
-module.exports = { addQuestions, settleRound, applyAnswers, toBuilding, provOf, openItems, holdsInstall };
+module.exports = { addQuestions, openRound, settleRound, applyAnswers, toBuilding, provOf, openItems, holdsInstall };

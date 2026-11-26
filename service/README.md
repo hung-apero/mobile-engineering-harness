@@ -130,7 +130,7 @@ Chỉ một `dz run` chạy một lúc; lần thứ hai thoát với lỗi nêu 
 
 ## Sửa rule
 
-Rule mặc định ở `service/rules/default.yaml` (slot, nhịp nhắc người, ngưỡng đĩa, ngưỡng quota...). Dịch vụ đọc lại file ở mỗi nhịp (10 giây), không cần khởi động lại; file sai thì bản đúng gần nhất được giữ và `dz status` báo lỗi. Giờ làm việc (9–18h, thứ Hai đến thứ Sáu, giờ Việt Nam) nằm trong code, không sửa được bằng rule. Việc chờ PO (quiz, duyệt, thử bản cài) được báo ngay khi mở, kể cả ngoài giờ, kèm link và tag PO; các lần nhắc sau theo `P01` và giờ làm việc. Chờ của QA và dev chỉ nhắc trong giờ làm việc.
+Rule mặc định ở `service/rules/default.yaml` (slot, nhịp nhắc người, ngưỡng đĩa, ngưỡng quota...). Dịch vụ đọc lại file ở mỗi nhịp (10 giây), không cần khởi động lại; file sai thì bản đúng gần nhất được giữ và `dz status` báo lỗi. Giờ làm việc (9–18h, thứ Hai đến thứ Sáu, giờ Việt Nam) nằm trong code, không sửa được bằng rule. Việc chờ PO (quiz, duyệt, thử bản cài) được báo ngay khi mở, kể cả ngoài giờ, kèm link và tag PO; các lần nhắc sau theo `P01` và giờ làm việc. Việc chờ dev (spec bị gác, thiếu điều kiện trước, không tự chọn được bản...) cũng được báo ngay khi mở, kể cả ngoài giờ, rồi nhắc mỗi ngày làm việc theo `P03`. Chờ của QA chỉ nhắc trong giờ làm việc.
 
 Mỗi quyết định ghi kèm số phiên bản rule. Dùng `DZ_RULES_DIR` để trỏ sang thư mục rule khác.
 
@@ -204,7 +204,7 @@ Mỗi nhịp, bước bug chạy nền (không chặn giám sát worker): quét 
 - Worker code chạy đoạn `build` (`coding-orchestrator`, mode `single`/`team`) trên nhánh `dz/spec-<id>` của bản clone, ghi `progress.json` và `result.json`; số suất được cấp nằm trong `headless.json`. Không adb, không push. Đĩa còn dưới 40 GB thì chỉ xin một suất. Xong khi `result.json` qua bộ kiểm và `commit` là đỉnh nhánh; thiếu thì chạy lại, hai lần không tiến (plan `done`) thì gác.
 - Mọi yêu cầu sửa (reviewer, cổng/build/chạy thử đỏ, góp ý PO khi thử, xung đột gộp, spec đổi đã duyệt, câu PO trả lời khác) ghi `.harness-run/inputs/rework-<N>.md` rồi chạy lại đoạn `build`.
 - Chạy thử cần một thiết bị được khoá cho spec (`spec:<id>:run`): dịch vụ build bản clone, cài `-r` APK mới nhất và mở app một lần, app phải còn chạy và không crash. Không có thiết bị thì chờ, báo dev (F05) và không gửi bản cài. Đỏ thì gửi lại cho đoạn `build`; lệch giao diện sau 3 vòng được ghi ở đầu trang thử và đầu PR (S05).
-- Câu reviewer cần PO chốt gửi PO ở link câu hỏi, đang tạm làm theo hiện trạng; câu đụng tiền thật hay xoá dữ liệu người dùng giữ bản cài lại tới khi PO trả lời.
+- Câu reviewer cần PO chốt: agent tạm làm theo hiện trạng và code tiếp; các câu tạm chọn gom lại hỏi PO một lần khi bản cài đã build và chạy thử xong (cùng lúc mời PO thử, PO xác nhận rồi mới duyệt bản cài). Câu đụng tiền thật hay xoá dữ liệu người dùng hỏi ngay và giữ bản cài lại tới khi PO trả lời.
 - Review độc lập chỉ đọc, tối đa 2 vòng sửa. Chạm vùng cấm hoặc lộ bí mật thì gác ngay (F02).
 - Candidate là một commit trên nhánh `dz/feature-<KEY>-<id>` với PR nháp vào nhánh gốc; tiêu đề và nội dung PR dịch vụ tự viết từ `brief/requirements.md` và `result.json` (quyết định `spec-pr-text`). PO duyệt đúng commit đó trên trang thử; có commit mới thì lời duyệt cũ hết hiệu lực.
 - Gộp vào `dz/release-<bản>` dùng chung khoá gộp với đợt bug; mỗi lúc một đợt, có cổng và build lại trước khi đẩy. Xung đột thì trả về code một lần, lần sau gác.

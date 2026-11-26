@@ -112,7 +112,7 @@ test('a PO wait opened in the evening is sent at once with its link and the PO t
 
 test('outside working hours nothing is pinged', async t => {
   const { ctx, sent } = setup(t);
-  openWait(ctx.db, { project: 'ABC1', role: 'dev', subject: 'x' }, NOW - 5 * DAY);
+  openWait(ctx.db, { project: 'ABC1', role: 'qa', subject: 'x' }, NOW - 5 * DAY);
   await tick(ctx, at('2026-11-25T08:00'));
   assert.equal(sent.length, 0);
 });

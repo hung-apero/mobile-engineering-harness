@@ -129,10 +129,11 @@ test('a review question answered Other by the PO becomes a rework', async t => {
   await s.code();
   await s.smoke();
   await s.review({ ...REVIEW_OK, needsPo: ['Có hiện nút bỏ qua không?'] });
+  await s.gate();
+  await s.build();
   await s.until(() => s.waits().some(wait => wait.role === 'po' && /tạm chọn/.test(wait.subject)), 'câu tạm');
   s.facade.saveDraft(s.id, { qid: 'T1', choice: 'Khác', text: 'FIX-OTHER bỏ hẳn nút' }, 'po', s.now);
   s.facade.submit(s.id, 'po', s.now);
-  await s.gate();
   await s.until(() => s.spec().state === 'building' && s.running('spec').length === 1, 'build lại');
   assert.match(fs.readFileSync(path.join(s.repo(), '.harness-run/inputs/rework-1.md'), 'utf8'), /FIX-OTHER bỏ hẳn nút/);
 });
