@@ -1,0 +1,124 @@
+const fs = require('node:fs');
+const { createClient, parse } = require('../bugs/jira-client.cjs');
+
+const READ_TOOLS = 'confluence_get_page';
+const WRITE_TOOLS = 'confluence_get_comments,confluence_add_comment';
+const PAGE_ID = /^\d{1,15}$/;
+const MAX_MARKDOWN = 2 * 1024 * 1024;
+
+class ConfluenceError extends Error {
+  constructor(message, { code = 'CONFLUENCE', uncertain = false } = {}) {
+    super(message);
+    this.name = 'ConfluenceError';
+    this.code = code;
+    this.uncertain = uncertain;
+  }
+}
+
+function parseRef(input) {
+  const text = String(input ?? '').trim();
+  if (PAGE_ID.test(text)) return { id: text };
+  let url;
+  try {
+    url = new URL(text);
+  } catch {
+    throw new ConfluenceError('Link Confluence hoặc mã trang không hợp lệ', { code: 'INVALID' });
+  }
+  const id = url.searchParams.get('pageId') ?? url.pathname.match(/\/pages\/(\d{1,15})(?:\/|$)/)?.[1];
+  if (!/^https?:$/.test(url.protocol) || !PAGE_ID.test(id ?? '')) throw new ConfluenceError('Link Confluence không có mã trang (cần dạng .../pages/<số>/... hoặc ?pageId=<số>)', { code: 'INVALID' });
+  return { id };
+}
+
+function readServer(configFile) {
+  const info = fs.lstatSync(configFile);
+  if (info.isSymbolicLink()) throw new ConfluenceError('Cấu hình Confluence là symlink, từ chối');
+  if (info.mode & 0o077) throw new ConfluenceError('Cấu hình Confluence phải có quyền 600');
+  const server = JSON.parse(fs.readFileSync(configFile, 'utf8'))?.mcpServers?.confluence;
+  if (!server?.command) throw new ConfluenceError('Cấu hình Confluence thiếu mcpServers.confluence');
+  return server;
+}
+
+function serverEnv(server, mode) {
+  const env = { ...server.env };
+  if (mode === 'write') {
+    delete env.READ_ONLY_MODE;
+    env.ENABLED_TOOLS = WRITE_TOOLS;
+  } else {
+    env.READ_ONLY_MODE = 'true';
+    env.ENABLED_TOOLS = READ_TOOLS;
+  }
+  return env;
+}
+
+function defaultConnect(configFile) {
+  return async mode => {
+    const server = readServer(configFile);
+    const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
+    const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
+    const client = new Client({ name: 'dev-zone', version: '1' });
+    await client.connect(new StdioClientTransport({ command: server.command, args: server.args ?? [], env: serverEnv(server, mode), stderr: 'ignore' }));
+    return client;
+  };
+}
+
+function secretsOf(configFile) {
+  try {
+    return Object.values(readServer(configFile).env ?? {}).map(String).filter(v => v.length >= 8);
+  } catch {
+    return [];
+  }
+}
+
+function createConfluence({ configFile, live = false, record = () => {}, connect, timeoutMs }) {
+  const open = connect ?? defaultConnect(configFile);
+  const secrets = secretsOf(configFile);
+  const readClient = createClient({ configFile, live: false, connect: () => open('read'), timeoutMs });
+  const writeClient = createClient({ configFile, live: true, connect: () => open('write'), timeoutMs });
+
+  const scrub = text => secrets.reduce((out, s) => out.split(s).join('[ẩn]'), String(text)).split('\n')[0].slice(0, 300);
+  const wrap = async work => {
+    try {
+      return await work();
+    } catch (error) {
+      if (error instanceof ConfluenceError) throw error;
+      throw new ConfluenceError(scrub(error?.message ?? error), { uncertain: error?.uncertain === true });
+    }
+  };
+
+  const getPage = id => wrap(async () => parse(await readClient.call('confluence_get_page', { page_id: id, convert_to_markdown: true })));
+
+  async function page(ref) {
+    const { id } = parseRef(ref);
+    const meta = (await getPage(id))?.metadata;
+    const markdown = meta?.content?.value;
+    if (typeof markdown !== 'string' || !markdown.trim()) throw new ConfluenceError(`Trang ${id} trống hoặc không đọc được nội dung`, { code: 'EMPTY' });
+    if (markdown.length > MAX_MARKDOWN) throw new ConfluenceError(`Trang ${id} quá lớn`, { code: 'TOO_LARGE' });
+    return { id: String(meta.id ?? id), title: String(meta.title ?? ''), markdown, version: Number(meta.version) || 0, url: String(meta.url ?? '') };
+  }
+
+  async function commentOnce(ref, marker, text) {
+    const { id } = parseRef(ref);
+    if (!live) {
+      record('would', `confluence comment ${id} ${marker}`);
+      return { dryRun: true };
+    }
+    const carries = () => wrap(async () => JSON.stringify(parse(await writeClient.call('confluence_get_comments', { page_id: id })) ?? '').includes(marker));
+    if (await carries()) return { skipped: true };
+    const body = `${text.startsWith('[Claude]') ? text : `[Claude] ${text}`}\n\n${marker}`;
+    try {
+      await wrap(() => writeClient.call('confluence_add_comment', { page_id: id, body }, { write: true }));
+    } catch (error) {
+      if (!error.uncertain || !(await carries())) throw error;
+    }
+    return { skipped: false };
+  }
+
+  async function close() {
+    await readClient.close();
+    await writeClient.close();
+  }
+
+  return { page, commentOnce, close };
+}
+
+module.exports = { createConfluence, parseRef, serverEnv, ConfluenceError, READ_TOOLS, WRITE_TOOLS };

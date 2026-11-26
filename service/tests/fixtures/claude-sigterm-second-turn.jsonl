@@ -1,0 +1,16 @@
+{"type": "system", "subtype": "init"}
+{"type": "rate_limit_event", "rate_limit_info": {"status": "allowed", "resetsAt": 1796018400, "unifiedWindows": {"seven_day": {"utilization": 0.09, "resetsAt": 1796018400, "status": "allowed"}}}}
+{"type": "assistant", "parent_tool_use_id": null}
+{"type": "system", "subtype": "background_tasks_changed", "tasks": [{"task_id": "a0add5cfb1bb4ce48"}]}
+{"type": "system", "subtype": "task_started", "task_id": "a0add5cfb1bb4ce48"}
+{"type": "user"}
+{"type": "assistant", "parent_tool_use_id": null}
+{"type": "assistant", "parent_tool_use_id": "toolu_01FMVqYZ5idJpvDG3pAkmxEz"}
+{"type": "system", "subtype": "task_updated", "task_id": "a0add5cfb1bb4ce48"}
+{"type": "system", "subtype": "task_notification", "task_id": "a0add5cfb1bb4ce48", "status": "completed"}
+{"type": "system", "subtype": "background_tasks_changed", "tasks": []}
+{"type": "system", "subtype": "init"}
+{"type": "assistant", "parent_tool_use_id": null}
+{"type": "system", "subtype": "task_started", "task_id": "bwjax2b05"}
+{"type": "system", "subtype": "task_notification", "task_id": "bwjax2b05", "status": "stopped"}
+{"type": "user"}

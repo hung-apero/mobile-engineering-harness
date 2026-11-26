@@ -1,0 +1,103 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { createConfluence, parseRef, serverEnv, ConfluenceError } = require('../src/specs/confluence.cjs');
+
+const page = { metadata: { id: '123', title: 'APP1 Phase 1: demo', url: 'https://wiki.example/pages/123', version: 4, content: { format: 'markdown', value: '# demo\n\ntext' } } };
+const text = value => ({ content: [{ type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value) }] });
+
+function fake(handlers) {
+  const calls = [];
+  const modes = [];
+  return {
+    calls, modes,
+    connect: async mode => {
+      modes.push(mode);
+      return { callTool: async ({ name, arguments: args }) => (calls.push([name, args]), handlers[name](args)), close: async () => {} };
+    },
+  };
+}
+
+test('parseRef takes a page id, /pages/<id>/ and ?pageId= links and refuses the rest', () => {
+  assert.deepEqual(parseRef('332470208'), { id: '332470208' });
+  assert.deepEqual(parseRef(' https://wiki.example/spaces/AB/pages/332470208/Title '), { id: '332470208' });
+  assert.deepEqual(parseRef('https://wiki.example/pages/viewpage.action?pageId=77'), { id: '77' });
+  for (const bad of ['', 'abc', 'https://wiki.example/display/AB/Title', 'ftp://x/pages/5/', '12345678901234567', undefined]) {
+    assert.throws(() => parseRef(bad), e => e instanceof ConfluenceError && e.code === 'INVALID');
+  }
+});
+
+test('page reads confluence_get_page as markdown and returns the trimmed shape', async () => {
+  const f = fake({ confluence_get_page: () => text(page) });
+  const c = createConfluence({ configFile: '/none', connect: f.connect });
+  assert.deepEqual(await c.page('https://wiki.example/pages/123/x'), { id: '123', title: 'APP1 Phase 1: demo', markdown: '# demo\n\ntext', version: 4, url: 'https://wiki.example/pages/123' });
+  assert.deepEqual(f.calls, [['confluence_get_page', { page_id: '123', convert_to_markdown: true }]]);
+  assert.deepEqual(f.modes, ['read']);
+});
+
+test('an empty or malformed page is refused with a code', async () => {
+  for (const body of [{ metadata: { id: '1', content: { value: '  ' } } }, 'not json', {}]) {
+    const c = createConfluence({ configFile: '/none', connect: fake({ confluence_get_page: () => text(body) }).connect });
+    await assert.rejects(c.page('1'), e => e instanceof ConfluenceError && e.code === 'EMPTY');
+  }
+});
+
+test('serverEnv forces read-only and a single tool for reads, whatever the file says', () => {
+  const server = { env: { CONFLUENCE_URL: 'u', READ_ONLY_MODE: 'false', ENABLED_TOOLS: 'confluence_delete_page,confluence_update_page' } };
+  assert.deepEqual(serverEnv(server, 'read'), { CONFLUENCE_URL: 'u', READ_ONLY_MODE: 'true', ENABLED_TOOLS: 'confluence_get_page' });
+  const write = serverEnv(server, 'write');
+  assert.equal(write.READ_ONLY_MODE, undefined);
+  assert.equal(write.ENABLED_TOOLS, 'confluence_get_comments,confluence_add_comment');
+});
+
+test('the config file must be 600 and not a symlink, and errors never carry the token', async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dz-conf-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'c.json');
+  fs.writeFileSync(file, JSON.stringify({ mcpServers: { confluence: { command: 'x', env: { CONFLUENCE_PERSONAL_TOKEN: 'supersecrettoken123' } } } }), { mode: 0o644 });
+  await assert.rejects(createConfluence({ configFile: file }).page('1'), /quyền 600/);
+  fs.chmodSync(file, 0o600);
+  const link = path.join(dir, 'l.json');
+  fs.symlinkSync(file, link);
+  await assert.rejects(createConfluence({ configFile: link }).page('1'), /symlink/);
+  const c = createConfluence({ configFile: file, connect: fake({ confluence_get_page: () => ({ isError: true, content: [{ type: 'text', text: 'denied supersecrettoken123 here' }] }) }).connect });
+  await assert.rejects(c.page('1'), e => e instanceof ConfluenceError && !e.message.includes('supersecrettoken123'));
+});
+
+test('commentOnce only describes the write when not live', async () => {
+  const records = [];
+  const f = fake({});
+  const c = createConfluence({ configFile: '/none', record: (...a) => records.push(a), connect: f.connect });
+  assert.deepEqual(await c.commentOnce('55', '<!-- m1 -->', 'xem bản duyệt'), { dryRun: true });
+  assert.deepEqual(records, [['would', 'confluence comment 55 <!-- m1 -->']]);
+  assert.deepEqual(f.modes, []);
+});
+
+test('live commentOnce writes once and skips when the marker is already on the page', async () => {
+  const comments = [];
+  const f = fake({
+    confluence_get_comments: () => text(comments),
+    confluence_add_comment: ({ body }) => (comments.push({ body }), text({ ok: true })),
+  });
+  const c = createConfluence({ configFile: '/none', live: true, connect: f.connect });
+  assert.deepEqual(await c.commentOnce('55', '<!-- m1 -->', 'xem bản duyệt'), { skipped: false });
+  assert.deepEqual(await c.commentOnce('55', '<!-- m1 -->', 'xem bản duyệt'), { skipped: true });
+  assert.equal(comments.length, 1);
+  assert.match(comments[0].body, /^\[Claude\] xem bản duyệt\n\n<!-- m1 -->$/);
+  assert.deepEqual(f.modes, ['write']);
+});
+
+test('a dead transport during the write is confirmed by re-reading the comments', async () => {
+  const comments = [];
+  const f = fake({
+    confluence_get_comments: () => text(comments),
+    confluence_add_comment: ({ body }) => {
+      comments.push({ body });
+      throw new Error('EPIPE');
+    },
+  });
+  const c = createConfluence({ configFile: '/none', live: true, connect: f.connect });
+  assert.deepEqual(await c.commentOnce('55', '<!-- m2 -->', 'x'), { skipped: false });
+});
