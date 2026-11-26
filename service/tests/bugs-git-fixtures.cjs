@@ -33,10 +33,14 @@ function commit(dir, files, message = 'change') {
 
 const HARNESS_AGENTS = ['bug-fixer', 'bug-reviewer', 'bug-scout', 'ui-board-judge', 'architect', 'coder', 'qa', 'reviewer'];
 
+const REAL_HARNESS = path.join(__dirname, '..', '..');
+const INIT_FILES = ['skills/harness-init/scripts/detect-stack.sh', 'skills/harness-init/scripts/render-overlay.sh', 'skills/harness-init/scripts/validate-overlay.py', 'overlay.schema.yaml'];
+
 function makeHarness(harness) {
   fs.mkdirSync(harness, { recursive: true });
   g(harness, 'init', '-q', '-b', 'main');
   return commit(harness, {
+    ...Object.fromEntries(INIT_FILES.map(file => [file, fs.readFileSync(path.join(REAL_HARNESS, file), 'utf8')])),
     'skills/bug-fix/SKILL.md': 'x\n', 'skills/bug/SKILL.md': 'y\n', 'skills/feature/SKILL.md': 'f\n', 'skills/feature/scripts/headless_check.py': 'print()\n', 'skills/spec-clear/SKILL.md': 's\n', 'skills/README.md': 'z\n',
     ...Object.fromEntries(HARNESS_AGENTS.map(name => [`agents/${name}.md`, `${name}\n`])),
   });

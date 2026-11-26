@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { doctor } = require('../src/doctor.cjs');
+const { FEATURE_FILES } = require('../src/bugs/workspace.cjs');
 const { makeHome, writeScript, DZ } = require('./service-fixtures.cjs');
 
 const PMSET = 'System-wide power settings:\n sleep 0\n autorestart 1\n';
@@ -31,7 +32,7 @@ function setup(t) {
   return { h, run: (overrides, extra = {}, options = {}) => doctor({ env: { ...h.env, ...extra }, exec: tools(overrides), home: h.root, codeDir: h.root, ...options }) };
 }
 
-const pinned = (h, files = ['skills/feature/scripts/headless_check.py', 'skills/spec-clear/SKILL.md']) => {
+const pinned = (h, files = FEATURE_FILES) => {
   for (const file of files) {
     fs.mkdirSync(path.dirname(path.join(h.dzHome, 'harness', file)), { recursive: true });
     fs.writeFileSync(path.join(h.dzHome, 'harness', file), 'x');
@@ -48,7 +49,6 @@ test('everything in place: every check passes and no output is echoed', t => {
   jiraFile(h, 'jira-read.json', READ_ENV);
   for (const [file, name] of [['confluence-read.json', 'confluence'], ['figma-read.json', 'framelink-figma']]) fs.writeFileSync(path.join(h.dzHome, 'secrets', file), JSON.stringify({ mcpServers: { [name]: { command: 'uvx' } } }), { mode: 0o600 });
   pinned(h);
-  fs.writeFileSync(path.join(h.dzHome, 'projects', 'ABC1.overlay.yaml'), 'product: abc1\n');
   fs.mkdirSync(path.join(h.dzHome, 'android-test-harness'));
   fs.mkdirSync(path.join(h.dzHome, 'e2e'));
   fs.writeFileSync(path.join(h.dzHome, 'e2e', 'ABC1.json'), '{}');
@@ -180,17 +180,9 @@ test('harness: absent is a warning, a head that is not the pinned commit or a di
   assert.equal(find(run({ git: () => ({ ok: false, missing: true, stdout: '' }) }), 'harness').level, 'THIẾU');
 });
 
-test('doctor reports missing overlay', t => {
-  const { h, run } = setup(t);
-  assert.match(find(run(), 'overlay').detail, /ABC1\.overlay\.yaml/);
-  assert.equal(find(run(), 'overlay').level, 'THIẾU');
-  fs.writeFileSync(path.join(h.dzHome, 'projects', 'ABC1.overlay.yaml'), 'product: abc1\n');
-  assert.equal(find(run(), 'overlay').level, 'ĐẠT');
-});
-
 test('doctor reports pinned harness without headless checker', t => {
   const { h, run } = setup(t);
-  pinned(h, ['skills/spec-clear/SKILL.md']);
+  pinned(h, FEATURE_FILES.filter(file => !file.endsWith('headless_check.py')));
   const check = find(run(atPin), 'harness');
   assert.equal(check.level, 'THIẾU');
   assert.match(check.detail, /headless_check\.py/);

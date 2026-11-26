@@ -88,7 +88,7 @@ tham số ở đợt sau. **[Đ]**
 | `approve g3`, `handoff --base` | bỏ; service tự đẩy nhánh, mở PR (landing đã có) |
 | `next`, `state.json`, `plans[].files` | `blocked.json`, `result.json`, `progress.json` |
 | Agent chép vào clone: 4 agent bug | thêm `architect`, `coder`, `qa`, `reviewer` |
-| — | chép overlay `$DZ_HOME/projects/<KEY>.overlay.yaml` → `.harness-overlay/overlay.yaml`, `upstream` trỏ harness ghim; thiếu thì spec dừng `needs-input` |
+| — | overlay theo thứ tự: `.harness-overlay/overlay.yaml` repo app đã commit (dùng nguyên) → `$DZ_HOME/projects/<KEY>.overlay.yaml` → service tự tạo bằng script `harness-init` (`detect-stack.sh`, 3 key thương hiệu lấy từ hàm `<Tên>Theme(` duy nhất trong code, `render-overlay.sh`, `validate-overlay.py`), lưu `$DZ_HOME/projects/<KEY>.overlay.yaml` cho các spec sau, ghi quyết định `OP02` và mở chờ dev xem lại (không chặn spec); `upstream` trỏ harness ghim; tự tạo không được thì spec dừng `needs-input` cho dev |
 | — | `dz spec cancel <id>`: đóng chờ, ngừng ping, gác job, giữ thư mục clone |
 | `live` quyết mọi lệnh ghi ra ngoài | `discord: true` cho phép riêng Discord (trả lời thread, ping, digest, kênh trả lời của bàn điều phối) khi `live: false` |
 
@@ -124,7 +124,7 @@ DZ_CLAUDE_CONFIG npm test`. Secret không vào DB/log/git/chat; token người d
 2 subagent cùng lúc.
 
 ## 9. Việc chỉ người dùng làm
-1. `harness-init` trong checkout AAP864 (3 key thương hiệu) → lưu `~/.dev-zone-v2/projects/AAP864.overlay.yaml`.
+1. Không cần làm overlay: AAP864 đã commit `.harness-overlay/overlay.yaml`; app chưa có thì service tự tạo.
 2. Đăng nhập Claude cho `~/.dev-zone-v2/claude`; chép `secrets/` cần thiết sang `~/.dev-zone-v2/secrets/`.
 3. Bot Discord: tạo bot, bật Message Content Intent, mời vào kênh thử, cất token, khai `channel`/`people`/`roles` trong
    `AAP864.yaml` của v2, đăng nhập và cài plugin cho bàn điều phối (`dz desk setup` in từng bước).

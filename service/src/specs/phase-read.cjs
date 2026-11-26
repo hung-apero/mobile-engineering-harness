@@ -5,7 +5,8 @@ const { hashText } = require('../text-hash.cjs');
 const { figmaReadConfig } = require('./figma-config.cjs');
 const { fresh } = require('./segment.cjs');
 const { notesOf } = require('./refresh.cjs');
-const { move, patch, park, needInput } = require('./kit.cjs');
+const { move, patch, park, needInput, decide } = require('./kit.cjs');
+const { openWait } = require('../pings.cjs');
 const { firstLine } = require('../redact.cjs');
 
 const MINUTE = 60 * 1000;
@@ -71,7 +72,12 @@ async function read(run) {
   }
   const cloned = await guarded(run, () => ctx.specs.prepareClone({ dzHome: ctx.dzHome, project: run.project, specId: cloneId(spec), markdown, source, figma: figma.url }));
   if (!cloned.value) return cloned.changed;
-  const { repo } = cloned.value;
+  const { repo, overlayCreated } = cloned.value;
+  if (overlayCreated) {
+    const { file, product, ui, di } = overlayCreated;
+    decide(run, 'OP02', 'spec-overlay-created', { file, product, ui, di });
+    openWait(run.db, { project: run.project.key, role: 'dev', subject: `Overlay của ${run.project.key} do service tự tạo (${product}, ${ui}, ${di}): xem lại ${file}, đúng thì dz done` }, run.now);
+  }
   const previous = notesOf(spec);
   for (const [name, text] of Object.entries(previous.files)) files.write(repo, path.join('inputs', name), text);
   move(run, 'asking', {

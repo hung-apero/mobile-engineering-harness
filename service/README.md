@@ -49,12 +49,12 @@ v2 là bản fork `~/Desktop/src/dev-zone` (nhánh `dev-zone`), dùng harness l�
 
 - Thư mục và cổng riêng: `export DZ_HOME=~/.dev-zone-v2 DZ_WEB_PORT=8788`.
 - Harness ghim: `git clone ~/Desktop/src/dev-zone $DZ_HOME/harness` rồi `git -C $DZ_HOME/harness checkout <harnessCommit>`; `harnessCommit` trong `$DZ_HOME/projects/<KEY>.yaml` phải trùng commit này.
-- Overlay của mỗi project bật: `$DZ_HOME/projects/<KEY>.overlay.yaml` (chép từ `.harness-overlay/overlay.yaml` của app). Bản clone spec nhận nó ở `.harness-overlay/overlay.yaml`, `upstream` trỏ vào harness ghim.
+- Overlay không cần làm tay. Bản clone spec dùng `.harness-overlay/overlay.yaml` repo app đã commit; không có thì dùng `$DZ_HOME/projects/<KEY>.overlay.yaml`; không có nữa thì service tự tạo bằng script `harness-init` (thương hiệu lấy từ hàm `<Tên>Theme(` duy nhất trong code), lưu vào `$DZ_HOME/projects/<KEY>.overlay.yaml` và mở chờ dev xem lại. Code có 0 hoặc nhiều hàm `*Theme(` thì spec chờ dev tự đặt file đó. `upstream` luôn trỏ vào harness ghim.
 - Bài thử: `live: false`, `discord: true` — Discord chạy thật, Jira, git push, gh, Firebase, Confluence vẫn khô.
 - Chạy bằng `cd service && node bin/dz.cjs run` trong terminal; không `dz install`, không launchd.
 - Worker không nhận biến nào của shell có tên dạng token, key, secret, password (vd `GITHUB_PERSONAL_ACCESS_TOKEN`, `FIGMA_API_KEY`). Khoá Figma phải nằm trong `secrets/figma-read.json` (khối `env` của server), không dựa vào biến shell.
 - Bot Discord chỉ một phiên nhận tin: tắt bàn điều phối của v1 (`DZ_HOME=~/.dev-zone node bin/dz.cjs desk stop` từ mã v1) trước khi `desk start` ở v2.
-- `dz doctor` ở v2 kiểm thêm overlay từng project bật, `python3` ≥ 3.9, harness ghim có `skills/feature/scripts/headless_check.py` và `skills/spec-clear/SKILL.md`.
+- `dz doctor` ở v2 kiểm thêm `python3` ≥ 3.9 và harness ghim có `skills/feature/scripts/headless_check.py`, `skills/spec-clear/SKILL.md`, `overlay.schema.yaml`, các script của `skills/harness-init/scripts/`.
 - `dz spec build` bị chặn ở v2 tới khi có đoạn build mới; spec không cần nữa thì `dz spec cancel <id>`.
 
 ## Gỡ

@@ -264,8 +264,7 @@ ngoài `origin`. Đối chiếu từng luật trong `service/src/bugs/prompts-bu
 
 - [ ] **Step 1 (builder):** Tạo `~/.dev-zone-v2/{projects,secrets}` (700), clone fork vào `~/.dev-zone-v2/harness` ở commit cuối của
   Task 9, chép `~/.dev-zone/projects/AAP864.yaml` sang và đặt `harnessCommit` = commit đó, `live: false`, `discord: true`.
-- [ ] **Step 2 (người dùng):** `harness-init` trong `~/.dev-zone/workspaces/AAP864/checkout` → lưu
-  `~/.dev-zone-v2/projects/AAP864.overlay.yaml`; đăng nhập Claude cho `~/.dev-zone-v2/claude`; chép secret cần (Confluence đọc,
+- [ ] **Step 2 (người dùng):** overlay không cần làm tay (repo AAP864 đã có, app khác service tự tạo); đăng nhập Claude cho `~/.dev-zone-v2/claude`; chép secret cần (Confluence đọc,
   Jira đọc, Figma, Discord) vào `~/.dev-zone-v2/secrets/` (600); bot Discord + `channel`/`people`/`roles` theo `dz desk setup`.
 - [ ] **Step 3:** `DZ_HOME=~/.dev-zone-v2 node service/bin/dz.cjs doctor`, Expected: không còn dòng THIẾU (trừ phần build/E2E).
 - [ ] **Step 4 (người dùng, sau go):** `dz run` và `dz desk start` của v2; gửi link Confluence 332470208 + Figma vào kênh thử.

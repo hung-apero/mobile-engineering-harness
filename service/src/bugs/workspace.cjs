@@ -6,7 +6,10 @@ const {
 
 const AGENTS = ['bug-fixer', 'bug-reviewer', 'bug-scout', 'ui-board-judge'];
 const FEATURE_AGENTS = ['architect', 'coder', 'qa', 'reviewer'];
-const FEATURE_FILES = ['skills/feature/scripts/headless_check.py', 'skills/spec-clear/SKILL.md'];
+const FEATURE_FILES = [
+  'skills/feature/scripts/headless_check.py', 'skills/spec-clear/SKILL.md', 'overlay.schema.yaml',
+  'skills/harness-init/scripts/detect-stack.sh', 'skills/harness-init/scripts/render-overlay.sh', 'skills/harness-init/scripts/validate-overlay.py',
+];
 const COMMIT = /^[0-9a-f]{7,40}$/;
 const DARWIN_CONFIG = process.platform === 'darwin' ? '\tignorecase = true\n\tprecomposeunicode = true\n' : '';
 const MIRROR_CONFIG = `[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = true\n${DARWIN_CONFIG}[receive]\n\tdenyDeletes = true\n\tdenyNonFastForwards = true\n`;
@@ -126,13 +129,17 @@ async function linkHarness({ dzHome, project, repo, git, agents = AGENTS, files 
   }
 }
 
-function linkOverlay({ dzHome, project, repo }) {
+function linkOverlay({ dzHome, project, repo, tracked = false }) {
   const home = fs.realpathSync(dzHome);
-  const source = path.join(home, 'projects', `${project.key}.overlay.yaml`);
-  if (!lstat(source)?.isFile()) throw new GitError(`thiếu overlay của project: ${source}`, 'OVERLAY');
   excludeLines(repo, ['.harness-overlay/']);
   const dir = realDirChain(repo, '.harness-overlay');
-  writeIfChanged(path.join(dir, 'overlay.yaml'), fs.readFileSync(source, 'utf8'), 0o644);
+  if (tracked) {
+    if (!lstat(path.join(dir, 'overlay.yaml'))?.isFile()) throw new GitError('.harness-overlay/overlay.yaml của repo app không phải file thường', 'OVERLAY');
+  } else {
+    const source = path.join(home, 'projects', `${project.key}.overlay.yaml`);
+    if (!lstat(source)?.isFile()) throw new GitError(`thiếu overlay của project: ${source}`, 'OVERLAY');
+    writeIfChanged(path.join(dir, 'overlay.yaml'), fs.readFileSync(source, 'utf8'), 0o644);
+  }
   const link = path.join(dir, 'upstream');
   const target = path.join(home, 'harness');
   const stat = lstat(link);

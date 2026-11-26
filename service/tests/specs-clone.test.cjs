@@ -119,3 +119,47 @@ test('a pinned harness without the headless checker is refused with HARNESS', as
   const project = { ...w.project, harnessCommit: g(w.harness, 'rev-parse', 'HEAD') };
   await assert.rejects(prepareSpecClone({ ...base(w), project }), error => error.code === 'HARNESS' && /headless_check\.py/.test(error.message));
 });
+
+const APP = {
+  'settings.gradle.kts': 'include(":app")\n',
+  'gradle/libs.versions.toml': '[libraries]\nkoin = { module = "io.insert-koin:koin-android" }\nretrofit = { module = "com.squareup.retrofit2:retrofit" }\n',
+  'app/build.gradle.kts': 'plugins { alias(libs.plugins.android.application) }\nandroid { namespace = "com.acme.learn" }\ndependencies { implementation("androidx.compose.ui:ui") }\n',
+  'app/src/main/java/com/acme/learn/ui/Theme.kt': 'package com.acme.learn.ui\n\n@Composable\nfun AcmeLearnTheme(content: @Composable () -> Unit) = content()\n',
+};
+const appWorld = (t, files = APP) => {
+  const w = world(t);
+  commit(w.dev, files, 'app');
+  g(w.dev, 'push', '-q', 'origin', 'develop');
+  return w;
+};
+
+test('an overlay committed in the app repo is used as is and only upstream is linked', async t => {
+  const w = appWorld(t, { ...APP, '.harness-overlay/overlay.yaml': OVERLAY });
+  const { repo, overlayCreated } = await prepareSpecClone(base(w));
+  assert.equal(overlayCreated, null);
+  assert.equal(fs.readFileSync(path.join(repo, '.harness-overlay', 'overlay.yaml'), 'utf8'), OVERLAY);
+  assert.equal(fs.readlinkSync(path.join(repo, '.harness-overlay', 'upstream')), w.harness);
+  assert.equal(fs.existsSync(overlayFile(w)), false);
+  assert.equal(g(repo, 'status', '--porcelain'), '');
+});
+
+test('without any overlay the service builds one from the app and keeps it for the project', async t => {
+  const w = appWorld(t);
+  const first = await prepareSpecClone(base(w));
+  assert.deepEqual(first.overlayCreated, { file: overlayFile(w), product: 'AcmeLearn', ui: 'compose-android', di: 'koin' });
+  const saved = fs.readFileSync(overlayFile(w), 'utf8');
+  for (const line of ['  package: com.acme.learn', '  theme_class: AcmeLearnTheme', '  presenter: app', '  network: retrofit']) assert.ok(saved.split('\n').includes(line), line);
+  assert.equal(fs.readFileSync(path.join(first.repo, '.harness-overlay', 'overlay.yaml'), 'utf8'), saved);
+  assert.equal(g(first.repo, 'status', '--porcelain'), '');
+  const second = await prepareSpecClone({ ...base(w), specId: 'sp2' });
+  assert.equal(second.overlayCreated, null);
+});
+
+test('an app whose theme cannot be told waits for the dev with OVERLAY', async t => {
+  const { 'app/src/main/java/com/acme/learn/ui/Theme.kt': theme, ...noTheme } = APP;
+  for (const files of [noTheme, { ...APP, 'app/src/main/java/com/acme/learn/ui/Other.kt': 'fun OtherTheme() {}\n' }]) {
+    const w = appWorld(t, files);
+    await assert.rejects(prepareSpecClone(base(w)), error => error.code === 'OVERLAY' && /Theme/.test(error.message));
+    assert.equal(fs.existsSync(overlayFile(w)), false);
+  }
+});

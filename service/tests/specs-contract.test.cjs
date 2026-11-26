@@ -163,3 +163,15 @@ test('the checker runs isolated from files next to it', async t => {
   assert.equal(fs.existsSync(marker), false);
   assert.equal(s.spec().state, 'quiz');
 });
+
+test('an overlay the service built is recorded and the dev is asked to look at it, the spec goes on', async t => {
+  const s = setup(t);
+  const clone = s.ctx.specs.prepareClone;
+  s.ctx.specs.prepareClone = async args => ({ ...(await clone(args)), overlayCreated: { file: '/dz/projects/ABC1.overlay.yaml', product: 'AcmeLearn', ui: 'compose-android', di: 'koin' } });
+  await s.tick();
+  assert.equal(s.spec().state, 'asking');
+  assert.equal(s.decisions('spec-overlay-created').length, 1);
+  const [wait] = s.waits();
+  assert.equal(wait.role, 'dev');
+  assert.match(wait.subject, /ABC1\.overlay\.yaml/);
+});

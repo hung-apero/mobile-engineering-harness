@@ -13,7 +13,7 @@ const { checkSandbox, checkKeychain } = require('./doctor-sandbox.cjs');
 const { checkConfluence, checkFigma, checkWeb } = require('./doctor-specs.cjs');
 const { deskChecks } = require('./desk-doctor.cjs');
 const { checkE2e } = require('./doctor-e2e.cjs');
-const { checkOverlay, checkPython, harnessFilesProblem } = require('./doctor-v2.cjs');
+const { checkPython, harnessFilesProblem } = require('./doctor-v2.cjs');
 
 const MIN_NODE = 24;
 const MIN_CLAUDE = [2, 1, 332];
@@ -182,7 +182,7 @@ function doctor({ env = process.env, exec = runCommand, freeGb = health.freeGb, 
   const checks = {
     node: checkNode, claude: checkClaude, 'đăng nhập claude': checkLogin, gh: checkGh, adb: checkAdb, 'đĩa trống': checkDisk,
     'file bí mật': checkSecrets, 'nguồn điện': checkPower, 'mã dịch vụ': checkCode, rule: checkRules, project: checkProjects,
-    'jira ghi': checkJiraWrite, 'jira đọc': checkJiraRead, harness: checkHarness, overlay: checkOverlay, python3: checkPython,
+    'jira ghi': checkJiraWrite, 'jira đọc': checkJiraRead, harness: checkHarness, python3: checkPython,
     'confluence đọc': checkConfluence, 'figma đọc': checkFigma, 'trang web': checkWeb, desk: deskChecks, e2e: checkE2e,
     sandbox: checkSandbox, keychain: checkKeychain,
   };

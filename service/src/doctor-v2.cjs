@@ -1,17 +1,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { loadProjects } = require('./projects.cjs');
 const { FEATURE_FILES } = require('./bugs/workspace.cjs');
 const result = (level, name, detail) => ({ level, name, detail });
 const isFile = file => fs.lstatSync(file, { throwIfNoEntry: false })?.isFile() === true;
-
-function checkOverlay({ dzHome, projectsDir }) {
-  const name = 'overlay';
-  const enabled = [...loadProjects(projectsDir, { dzHome }).projects.values()].filter(project => project.enabled);
-  const lost = enabled.map(project => `${project.key}.overlay.yaml`).filter(file => !isFile(path.join(projectsDir, file)));
-  if (lost.length) return result('THIẾU', name, `chưa có ${lost.join(', ')} trong ${projectsDir}`);
-  return result('ĐẠT', name, `${enabled.length} project`);
-}
 
 function checkPython({ exec, baseEnv }) {
   const name = 'python3';
@@ -27,4 +18,4 @@ function harnessFilesProblem(dir) {
   return lost.length ? `harness ghim thiếu ${lost.join(', ')}` : null;
 }
 
-module.exports = { checkOverlay, checkPython, harnessFilesProblem };
+module.exports = { checkPython, harnessFilesProblem };
