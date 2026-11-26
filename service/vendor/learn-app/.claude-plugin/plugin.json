@@ -1,9 +1,0 @@
-{
-  "name": "learn-app",
-  "displayName": "Learn App Builder",
-  "version": "0.55.2",
-  "description": "Harness cho PO lắp app Learn từ Feature Store: đọc spec + Figma, lắp feature qua 2 cổng duyệt. Cài kèm android-test-harness để chạy E2E.",
-  "author": { "name": "hung-apero", "email": "huypq.dev@gmail.com" },
-  "license": "UNLICENSED",
-  "keywords": ["android", "learn-sdk", "terakit", "harness", "e2e"]
-}

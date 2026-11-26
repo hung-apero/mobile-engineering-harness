@@ -12,7 +12,7 @@ test('valid file loads', () => {
   assert.deepEqual(errors, []);
   assert.deepEqual({ ...projects.get('ABC1') }, {
     key: 'ABC1',
-    repo: 'apero/learn-app',
+    repo: 'apero/demo-app',
     base: 'main',
     checkout: path.join(fs.realpathSync(dzHome), 'workspaces', 'ABC1'),
     flavor: 'appDev',

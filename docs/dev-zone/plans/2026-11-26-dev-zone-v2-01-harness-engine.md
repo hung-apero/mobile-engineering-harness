@@ -435,3 +435,24 @@ approved ──dz spec build──► waiting-prereq ──► building ──�
 - [ ] **Step 2:** Chạy, Expected: FAIL. **Step 3:** Xoá, sửa, port test. **Step 4:** Chạy toàn bộ, Expected: PASS;
   `grep -rni "learn-app\|LEARN_APP\|learnapp" service/src service/tests service/bin` không còn kết quả.
 - [ ] **Step 5: Commit** `refactor(service): remove learn-app`
+
+### Ruling khi làm Phần B (2026-11-26)
+
+- Task 12: test rework do reviewer, cổng đỏ, góp ý PO khi thử, câu PO trả lời "khác" cần đi qua bước chạy thử mới nên nằm ở
+  `specs-build-handoff.test.cjs` của Task 13; Task 12 chỉ giữ các test chạy được trước đó (spec đổi lúc code, xoá mục rework, worker
+  sửa file rework, `sendBack`).
+- Task 12: sửa lỗi thật — kiểm `forged` so `spec-v1.md` với `rawSha`, mà `rawSha` đổi theo nguồn sau khi PO duyệt phần spec đổi,
+  nên spec bị gác nhầm. Thêm `v1Sha` (băm `spec-v1.md` lúc đọc); spec cũ chưa có `v1Sha` vẫn dùng `rawSha`.
+- Task 13: bỏ luôn `runState`, `build-kit.state`, `learnState`, `atGate` (không còn ai gọi sau khi bỏ handoff và cổng 3), không đợi
+  Task 14.
+- Task 13: chạy thử là việc `build` (lệnh, `run-step`) có thêm bước `smoke`, không thêm loại việc mới; `machine` coi việc đó là việc
+  của bước `smoking` để không áp yêu cầu sửa khi kết quả chạy thử chưa xử lý.
+- Task 13: ở `reviewing`, `result.commit` chỉ cần là tổ tiên của đỉnh nhánh `dz/spec-<id>` (worker so UI có thể commit thêm);
+  ở `building` vẫn phải đúng đỉnh.
+- Task 13: digest Figma của harness không có deep link; worker so UI tự đi tới màn theo tên (`screens[].name`, `node`).
+- Task 14: giữ `tests/helpers/no-discord.cjs` (lệnh chạy một file trong plan dùng nó), đổi thành xoá mọi biến `*WEBHOOK*`; `SECRET`
+  của `worker-env` thêm `WEBHOOK`.
+- Task 14: port test cũ còn lại giao cho 2 subagent, mỗi agent sở hữu file test riêng; `specs-build-real.test.cjs` bỏ (chạy state
+  CLI thật của learn-app).
+- Task 14: sửa lỗi thật do test port lộ ra — ghi `inputs/po-notes-<N>.md` hỏng thì không ghi lại, nhưng `rework-<N>.md` vẫn bảo worker
+  đọc file đó; `applyNotes` giờ ghi lại file còn thiếu trước khi viết rework.

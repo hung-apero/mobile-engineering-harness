@@ -45,7 +45,7 @@ function deskHome(t) {
   const tmux = bin(bins, 'tmux', TMUX);
   const claude = bin(bins, 'claude', CLAUDE);
   const db = openDb(path.join(home, 'dz.db'));
-  const env = { HOME: path.join(home, 'user'), USER: 'dz', LOGNAME: 'dz', PATH: `${bins}:/usr/bin:/bin`, LANG: 'en_US.UTF-8', LEARN_APP_DISCORD_WEBHOOK: 'x', ANTHROPIC_API_KEY: 'y', DISCORD_BOT_TOKEN: 'z' };
+  const env = { HOME: path.join(home, 'user'), USER: 'dz', LOGNAME: 'dz', PATH: `${bins}:/usr/bin:/bin`, LANG: 'en_US.UTF-8', DZ_DISCORD_WEBHOOK: 'x', ANTHROPIC_API_KEY: 'y', DISCORD_BOT_TOKEN: 'z' };
   t.after(() => {
     db.close();
     const pids = path.join(bins, 'pids');

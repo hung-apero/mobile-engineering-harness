@@ -30,13 +30,13 @@ test('start: opens tmux session dz-desk with a clean env and records pid and sta
   assert.deepEqual(seen.args, claudeArgs(deskPaths(h.home), row.sessionId));
   assert.equal(seen.cwd, deskPaths(h.home).dir);
   assert.equal(seen.env.CLAUDE_CONFIG_DIR, path.join(h.home, 'claude'));
-  for (const name of ['LEARN_APP_DISCORD_WEBHOOK', 'ANTHROPIC_API_KEY', 'DISCORD_BOT_TOKEN']) assert.equal(seen.env[name], undefined);
+  for (const name of ['DZ_DISCORD_WEBHOOK', 'ANTHROPIC_API_KEY', 'DISCORD_BOT_TOKEN']) assert.equal(seen.env[name], undefined);
   const { args, env } = h.tmuxLog().find(call => call.args.includes('new-session'));
   assert.deepEqual(args.slice(0, 5), ['-L', 'dz-desk', '-f', '/dev/null', 'new-session']);
   assert.equal(args[args.indexOf('-s') + 1], 'dz-desk');
   assert.deepEqual(args.slice(args.indexOf('--') + 1).slice(0, 2), ['/usr/bin/env', '-i']);
   assert.ok(!JSON.stringify({ args, env }).includes(TOKEN));
-  assert.equal(env.LEARN_APP_DISCORD_WEBHOOK, undefined);
+  assert.equal(env.DZ_DISCORD_WEBHOOK, undefined);
   assert.deepEqual(kv.get(h.db, 'desk:session'), { sessionId: row.sessionId, pid: row.pid, pidStart: processStart(row.pid), startedAt: NOW });
 });
 

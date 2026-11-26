@@ -65,7 +65,7 @@ test('$HOME is replaced: no placeholder left, DZ_HOME and logs live under the gi
 
 test('plist carries PATH of tool dirs, JAVA_HOME, ANDROID_HOME, LANG and nothing secret', t => {
   const s = setup(t, {
-    LEARN_APP_DISCORD_WEBHOOK: 'https://discord.com/api/webhooks/1/hunter2',
+    DZ_DISCORD_WEBHOOK: 'https://discord.com/api/webhooks/1/hunter2',
     DISCORD_TOKEN: 'tok-secret',
     GITHUB_TOKEN: 'ghp_secret',
     ANTHROPIC_API_KEY: 'sk-ant-secret',

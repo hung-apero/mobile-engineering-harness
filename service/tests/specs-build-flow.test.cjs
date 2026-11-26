@@ -9,7 +9,6 @@ test('build worker runs the harness headless with slots and branch in headless.j
   await s.toBuilding();
   const { env, args } = s.calls.at(-1);
   assert.equal(env.HARNESS_HEADLESS, '1');
-  assert.deepEqual([env.LEARN_APP_HEADLESS, env.LEARN_APP_PARALLEL, env.LEARN_APP_TRACKING], [undefined, undefined, undefined]);
   assert.equal(args.includes('--plugin-dir'), false);
   const config = s.headless();
   assert.equal(config.segment, 'build');
@@ -28,7 +27,7 @@ test('build prompt names the build segment, the checker and the branch and forbi
   assert.match(prompt, /đoạn build/);
   assert.match(prompt, /headless_check\.py build \./);
   assert.match(prompt, new RegExp(`dz/spec-${s.id}`));
-  assert.doesNotMatch(prompt, /learn-app|state CLI|headless-start/);
+  assert.doesNotMatch(prompt, /state CLI|headless-start|plugin/);
   for (const rule of ['Bash(adb:*)', 'Bash(emulator:*)', 'Bash(git push:*)', 'Bash(gh:*)', 'AskUserQuestion']) assert.ok(args.includes(rule), rule);
 });
 

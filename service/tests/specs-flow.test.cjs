@@ -16,7 +16,6 @@ test('a spec goes new to approved through quiz and review with the real state co
   const { args, env, cwd } = s.calls[0];
   assert.equal(cwd, s.repo());
   assert.equal(env.HARNESS_HEADLESS, '1');
-  assert.deepEqual([env.LEARN_APP_HEADLESS, env.LEARN_APP_TRACKING], [undefined, undefined]);
   assert.match(args.at(-1), /đoạn ask\b[\s\S]*skill feature[\s\S]*headless_check\.py ask \./);
   assert.deepEqual(JSON.parse(s.read('inputs/headless.json')), { spec: 'inputs/spec-v1.md', figma: null, app: 'ABC1', case: 'existing', segment: 'ask' });
 

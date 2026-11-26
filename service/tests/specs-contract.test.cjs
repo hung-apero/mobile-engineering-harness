@@ -7,12 +7,11 @@ const { setup, asked, clarified, put, QUESTIONS, TRIAGE } = require('./specs-flo
 const SPEC_CLEAR = fs.readFileSync(path.join(__dirname, 'fixtures', 'spec-clear-questions.md'), 'utf8');
 const exists = (s, rel) => fs.existsSync(path.join(s.repo(), '.harness-run', rel));
 
-test('ask worker env has HARNESS_HEADLESS and no LEARN_APP vars and no plugin dir', async t => {
+test('ask worker env has HARNESS_HEADLESS and no plugin dir', async t => {
   const s = setup(t);
   await s.until(() => s.calls.length === 1);
   const { args, env } = s.calls[0];
   assert.equal(env.HARNESS_HEADLESS, '1');
-  assert.deepEqual([env.LEARN_APP_HEADLESS, env.LEARN_APP_TRACKING], [undefined, undefined]);
   assert.equal(args.includes('--plugin-dir'), false);
   assert.ok(args.includes('AskUserQuestion'));
 });

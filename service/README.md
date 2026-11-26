@@ -52,10 +52,10 @@ v2 là bản fork `~/Desktop/src/dev-zone` (nhánh `dev-zone`), dùng harness l�
 - Overlay không cần làm tay. Bản clone spec dùng `.harness-overlay/overlay.yaml` repo app đã commit; không có thì dùng `$DZ_HOME/projects/<KEY>.overlay.yaml`; không có nữa thì service tự tạo bằng script `harness-init` (thương hiệu lấy từ hàm `<Tên>Theme(` duy nhất trong code), lưu vào `$DZ_HOME/projects/<KEY>.overlay.yaml` và mở chờ dev xem lại. Code có 0 hoặc nhiều hàm `*Theme(` thì spec chờ dev tự đặt file đó. `upstream` luôn trỏ vào harness ghim.
 - Bài thử: `live: false`, `discord: true` — Discord chạy thật, Jira, git push, gh, Firebase, Confluence vẫn khô.
 - Chạy bằng `cd service && node bin/dz.cjs run` trong terminal; không `dz install`, không launchd.
-- Worker không nhận biến nào của shell có tên dạng token, key, secret, password (vd `GITHUB_PERSONAL_ACCESS_TOKEN`, `FIGMA_API_KEY`). Khoá Figma phải nằm trong `secrets/figma-read.json` (khối `env` của server), không dựa vào biến shell.
+- Worker không nhận biến nào của shell có tên dạng token, key, secret, password, webhook (vd `GITHUB_PERSONAL_ACCESS_TOKEN`, `FIGMA_API_KEY`). Khoá Figma phải nằm trong `secrets/figma-read.json` (khối `env` của server), không dựa vào biến shell.
 - Bot Discord chỉ một phiên nhận tin: tắt bàn điều phối của v1 (`DZ_HOME=~/.dev-zone node bin/dz.cjs desk stop` từ mã v1) trước khi `desk start` ở v2.
 - `dz doctor` ở v2 kiểm thêm `python3` ≥ 3.9 và harness ghim có `skills/feature/scripts/headless_check.py`, `skills/spec-clear/SKILL.md`, `overlay.schema.yaml`, các script của `skills/harness-init/scripts/`.
-- `dz spec build` bị chặn ở v2 tới khi có đoạn build mới; spec không cần nữa thì `dz spec cancel <id>`.
+- Spec không cần nữa thì `dz spec cancel <id>`.
 
 ## Gỡ
 
@@ -184,27 +184,28 @@ Mỗi nhịp, bước bug chạy nền (không chặn giám sát worker): quét 
 
 ## Spec
 
-`new → reading → asking → quiz → clarifying → review → approved`, rẽ sang `needs-input` (thiếu thông tin) hoặc `parked` (worker dừng giữa chừng hai lần). Mỗi nhịp, bước spec chạy nền: đọc nguồn (`secrets/confluence-read.json`), tạo bản clone riêng ở `workspaces/<KEY>/specs/<id>/repo`, chạy `learn-app` không người từng đoạn (`ask`, `clarify`) bằng việc loại `spec` (một suất code như `feature`). Dịch vụ chỉ tin file trong `.learn-app`, không tin lời worker. Câu hỏi thêm của PO là việc loại `explain`: chỉ đọc, có một suất riêng ngoài suất code, tối đa 20 lần mỗi câu.
+`new → reading → asking → quiz → clarifying → review → approved`, rẽ sang `needs-input` (thiếu thông tin) hoặc `parked` (worker dừng giữa chừng hai lần). Mỗi nhịp, bước spec chạy nền: đọc nguồn (`secrets/confluence-read.json`), tạo bản clone riêng ở `workspaces/<KEY>/specs/<id>/repo`, chạy `/feature` của harness ghim không người (`HARNESS_HEADLESS=1`) từng đoạn (`ask`, `clarify`, `build`) bằng việc loại `spec` (một suất code như `feature`). Dịch vụ chỉ tin file trong `.harness-run/` và bộ kiểm `headless_check.py`, không tin lời worker; file dịch vụ ghi ở `.harness-run/inputs/` bị sửa thì spec bị gác. Câu hỏi thêm của PO là việc loại `explain`: chỉ đọc, có một suất riêng ngoài suất code, tối đa 20 lần mỗi câu.
 
 - Chỉ dịch vụ ghi câu trả lời vào `questions.md`. Trước khi viết lại và trước khi duyệt, các dòng trả lời được so với DB; lệch thì ghi lại từ DB, ghi quyết định `spec-answers-restored` và viết lại spec trước khi cho duyệt.
 - Câu về tiền, quảng cáo, Premium, phần thưởng, xoá dữ liệu, bỏ yêu cầu, dữ liệu mẫu, thư viện không làm được, nguồn mâu thuẫn luôn hỏi PO.
 - Duyệt gắn với sha256 của bản spec cao nhất; bản đổi thì PO phải duyệt lại.
 - Spec có link Figma cần `secrets/figma-read.json` (đúng một server `framelink-figma`, quyền 600).
 - `live: false`: không comment Confluence, không Discord, không push. Comment Confluence khi live cần token được phép comment trong `confluence-read.json`.
-- `.learn-app` của bản clone nằm trong commit duyệt cổng 1 và không được đẩy đi đâu: commit gửi đi được dựng lại từ cây đã bỏ `.learn-app`, và cửa kiểm diff cấm mọi đường dẫn `.learn-app`.
+- `.harness-run/` không được đẩy đi đâu: commit gửi đi được dựng lại từ cây đã bỏ `.harness-run`, và cửa kiểm diff cấm mọi đường dẫn `.harness-run`.
 
 ### Code tính năng
 
-`approved → waiting-prereq → building → (provisional) → smoking → uidiff → reviewing → candidate → po-trial → landing → done`. Chạy khô thì kết thúc ở `landed-dry`; `dz bugs reset-dry` đưa spec đó về `po-trial`. `needs-input` và `parked` rẽ ra từ mọi bước; `dz spec retry` quay lại đúng bước đó. `dz spec cancel` đưa spec về `cancelled` từ bất kỳ bước nào, không quay lại được.
+`approved → waiting-prereq → building → smoking → uidiff → reviewing → candidate → po-trial → landing → done`, bắt đầu bằng `dz spec build <id> --version <bản>`. Chạy khô thì kết thúc ở `landed-dry`; `dz bugs reset-dry` đưa spec đó về `po-trial`. `needs-input` và `parked` rẽ ra từ mọi bước; `dz spec retry` quay lại đúng bước đó. `dz spec cancel` đưa spec về `cancelled` từ bất kỳ bước nào, không quay lại được.
 
 - Điều kiện trước kiểm bằng `gh` chỉ đọc, 15 phút một lần; chưa đủ thì mở việc chờ dev.
-- Worker code chạy `learn-app` tới hết gộp plan, `LEARN_APP_PARALLEL` bằng số suất được cấp, không có adb, không push. Đĩa còn dưới 40 GB thì chỉ xin một suất. Worker chết giữa plan thì lượt sau làm tiếp trong đúng worktree của plan đó.
-- Quyết định chưa có trong spec thì tạm chọn và gửi PO xác nhận ở link câu hỏi; quyết định đụng tiền thật hay xoá dữ liệu người dùng thì plan đó chờ PO.
-- Chạy thử cần một thiết bị được khoá cho spec (`spec:<id>:run`). Không có thiết bị thì chờ, báo dev (F05) và không gửi bản cài. Lỗi nặng thì gác; lỗi nhỏ còn lại và lệch giao diện sau 3 vòng được ghi ở đầu trang thử và đầu PR (S05).
+- Worker code chạy đoạn `build` (`coding-orchestrator`, mode `single`/`team`) trên nhánh `dz/spec-<id>` của bản clone, ghi `progress.json` và `result.json`; số suất được cấp nằm trong `headless.json`. Không adb, không push. Đĩa còn dưới 40 GB thì chỉ xin một suất. Xong khi `result.json` qua bộ kiểm và `commit` là đỉnh nhánh; thiếu thì chạy lại, hai lần không tiến (plan `done`) thì gác.
+- Mọi yêu cầu sửa (reviewer, cổng/build/chạy thử đỏ, góp ý PO khi thử, xung đột gộp, spec đổi đã duyệt, câu PO trả lời khác) ghi `.harness-run/inputs/rework-<N>.md` rồi chạy lại đoạn `build`.
+- Chạy thử cần một thiết bị được khoá cho spec (`spec:<id>:run`): dịch vụ build bản clone, cài `-r` APK mới nhất và mở app một lần, app phải còn chạy và không crash. Không có thiết bị thì chờ, báo dev (F05) và không gửi bản cài. Đỏ thì gửi lại cho đoạn `build`; lệch giao diện sau 3 vòng được ghi ở đầu trang thử và đầu PR (S05).
+- Câu reviewer cần PO chốt gửi PO ở link câu hỏi, đang tạm làm theo hiện trạng; câu đụng tiền thật hay xoá dữ liệu người dùng giữ bản cài lại tới khi PO trả lời.
 - Review độc lập chỉ đọc, tối đa 2 vòng sửa. Chạm vùng cấm hoặc lộ bí mật thì gác ngay (F02).
-- Candidate là một commit trên nhánh `dz/feature-<KEY>-<id>` với PR nháp vào nhánh gốc. PO duyệt đúng commit đó trên trang thử; có commit mới thì lời duyệt cũ hết hiệu lực.
+- Candidate là một commit trên nhánh `dz/feature-<KEY>-<id>` với PR nháp vào nhánh gốc; tiêu đề và nội dung PR dịch vụ tự viết từ `brief/requirements.md` và `result.json` (quyết định `spec-pr-text`). PO duyệt đúng commit đó trên trang thử; có commit mới thì lời duyệt cũ hết hiệu lực.
 - Gộp vào `dz/release-<bản>` dùng chung khoá gộp với đợt bug; mỗi lúc một đợt, có cổng và build lại trước khi đẩy. Xung đột thì trả về code một lần, lần sau gác.
-- Spec gốc đổi lúc đang code (S04): PO duyệt phần đổi, chỉ plan liên quan làm lại, phần khác chạy tiếp; chưa duyệt thì chưa gửi bản cài.
+- Spec gốc đổi lúc đang code (S04): PO duyệt phần đổi, dịch vụ ghi bản spec mới vào `inputs/spec-v<N>.md` và một yêu cầu sửa; chưa duyệt thì chưa gửi bản cài.
 - Project chưa `live`: không push, không PR, không gửi bản cài; các việc đó ghi thành quyết định `would`. Bật `live` khi đang chờ PO thử thì gửi lại thật và hỏi PO lại.
 - `discord: true` (mặc định `false`) bật riêng phần Discord khi project chưa `live`: bot trả lời thật, ping qua webhook, kênh được phép trả lời. Jira, git push, gh, Firebase, Confluence vẫn theo `live`.
 

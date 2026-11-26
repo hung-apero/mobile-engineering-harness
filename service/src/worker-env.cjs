@@ -1,10 +1,10 @@
 const path = require('node:path');
 
-const LEAKING = ['LEARN_APP_DISCORD_', 'DISCORD_', 'CLAUDE_CODE_'];
+const LEAKING = ['DISCORD_', 'CLAUDE_CODE_'];
 const REMOVED = ['CLAUDECODE', 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'GH_TOKEN', 'GITHUB_TOKEN'];
-const FIXED = ['CLAUDE_CONFIG_DIR', 'BUG_FIX_STATE_DIR', 'LEARN_APP_BUILD_SLOTS'];
+const FIXED = ['CLAUDE_CONFIG_DIR', 'BUG_FIX_STATE_DIR'];
 
-const SECRET = /TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|API_?KEY|ACCESS_KEY|PRIVATE_KEY|_KEY$/i;
+const SECRET = /TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|WEBHOOK|API_?KEY|ACCESS_KEY|PRIVATE_KEY|_KEY$/i;
 
 const isLeaking = name => LEAKING.some(prefix => name.startsWith(prefix)) || REMOVED.includes(name) || SECRET.test(name);
 
@@ -14,7 +14,6 @@ function workerEnv(base, dzHome) {
     if (isLeaking(name)) delete env[name];
   }
   env.CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS = '0';
-  env.LEARN_APP_BUILD_SLOTS = '1';
   env.BUG_FIX_STATE_DIR = path.join(dzHome, 'bug-fix-state');
   if (base.DZ_CLAUDE_CONFIG === 'shared') delete env.CLAUDE_CONFIG_DIR;
   else env.CLAUDE_CONFIG_DIR = path.join(dzHome, 'claude');

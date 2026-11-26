@@ -1,1 +1,1 @@
-for (const name of Object.keys(process.env)) if (name.startsWith('LEARN_APP_DISCORD_')) delete process.env[name];
+for (const name of Object.keys(process.env)) if (/WEBHOOK/i.test(name)) delete process.env[name];

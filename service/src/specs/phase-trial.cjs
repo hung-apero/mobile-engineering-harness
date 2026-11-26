@@ -24,6 +24,7 @@ async function applyNotes(run) {
   const { pendingNotes = [] } = buildOf(run);
   const last = pendingNotes.at(-1);
   if (!last) return false;
+  for (const { name, note } of pendingNotes) if (files.read(run.spec.data.repo, name) === null) files.write(run.spec.data.repo, name, `${note}\n`);
   const told = pendingNotes.map(({ name, note }) => `(.harness-run/${name})\n${note}`).join('\n\n');
   sendBack(run, `PO thử bản cài và góp ý.\n\n${told}`, `trial-${last.number}`);
   saveBuild(run, { pendingNotes: [] });

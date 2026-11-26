@@ -26,7 +26,7 @@ test('a command job starts bin and args with its session id, without claude, wit
   assert.deepEqual(calls[0].args, ['a b', 'spec.json', '--session-id', job(ctx, id).sessionId]);
   assert.equal(calls[0].cwd, h.dzHome);
   const { env } = calls[0];
-  assert.deepEqual([env.GH_CONFIG_DIR, env.LEARN_APP_BUILD_SLOTS, env.GH_TOKEN, env.JAVA_HOME, env.DISCORD_TOKEN], ['/empty', '1', undefined, undefined, undefined]);
+  assert.deepEqual([env.GH_CONFIG_DIR, env.GH_TOKEN, env.JAVA_HOME, env.DISCORD_TOKEN], ['/empty', undefined, undefined, undefined]);
 });
 
 test('a resumed command job runs the same command from the start', async t => {

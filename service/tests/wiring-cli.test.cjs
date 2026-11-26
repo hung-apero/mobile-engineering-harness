@@ -49,6 +49,6 @@ test('dz spec build and prereq are reachable and validated', t => {
   assert.equal(h.dz('spec', 'build', '1').status, 2);
   const out = h.dz('spec', 'build', '999', '--version', '1.0.0');
   assert.equal(out.status, 1);
-  assert.match(out.stderr, /đoạn build chưa có ở v2/);
+  assert.match(out.stderr, /999/);
   assert.equal(h.dz('spec', 'prereq', '999', '--clear').status, 1);
 });

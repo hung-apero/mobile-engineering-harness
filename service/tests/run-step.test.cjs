@@ -97,10 +97,10 @@ test('outFile replaces result.json and an old one never survives into a new run'
 
 test('a step sees its own env and cannot get a protected variable back', async t => {
   const h = stepHome(t);
-  const code = "require('fs').writeFileSync('env', JSON.stringify([process.env.A, process.env.GH_TOKEN, process.env.DZ_T, process.env.LEARN_APP_BUILD_SLOTS]))";
-  const env = { ...process.env, LEARN_APP_BUILD_SLOTS: '1', DZ_T: 't' };
+  const code = "require('fs').writeFileSync('env', JSON.stringify([process.env.A, process.env.GH_TOKEN, process.env.DZ_T, process.env.BUG_FIX_STATE_DIR]))";
+  const env = { ...process.env, BUG_FIX_STATE_DIR: '1', DZ_T: 't' };
   delete env.GH_TOKEN;
-  await h.run({ steps: [h.js(code, { env: { A: 'a', GH_TOKEN: 'x', DZ_T: null, LEARN_APP_BUILD_SLOTS: '9' } })] }, { env });
+  await h.run({ steps: [h.js(code, { env: { A: 'a', GH_TOKEN: 'x', DZ_T: null, BUG_FIX_STATE_DIR: '9' } })] }, { env });
   assert.deepEqual(JSON.parse(h.read('env')), ['a', null, null, '1']);
 });
 

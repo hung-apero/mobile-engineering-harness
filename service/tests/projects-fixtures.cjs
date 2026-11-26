@@ -21,7 +21,7 @@ function setup() {
 function yamlFor(key, dzHome, overrides = {}) {
   const fields = {
     key,
-    repo: 'apero/learn-app',
+    repo: 'apero/demo-app',
     base: 'main',
     checkout: path.join(dzHome, 'workspaces', key),
     flavor: 'appDev',

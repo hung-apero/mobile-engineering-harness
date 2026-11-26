@@ -148,7 +148,7 @@ function retry(ctx, [id, , figma], now) {
 
 async function spec(ctx, args, now) {
   const [first, ...rest] = args;
-  if (first === 'build') throw new ExpectedError('đoạn build chưa có ở v2');
+  if (first === 'build') return building.build(ctx, specOf(ctx, rest[0]), rest, now);
   if (first === 'prereq') return building.prereq(ctx, specOf(ctx, rest[0]), rest, now);
   const run = { list, show, link, refresh, retry, cancel }[Object.hasOwn(SUBS, first) ? first : ''];
   return run ? run(ctx, rest, now) : create(ctx, args, now);

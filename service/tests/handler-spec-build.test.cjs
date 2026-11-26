@@ -18,7 +18,7 @@ test('the code worker runs the harness headless, with no push and no device', t 
   const w = make(t);
   const out = prepare(w.job({ segment: 'build', branch: 'dz/spec-7' }), w.options());
   assert.equal(out.env.HARNESS_HEADLESS, '1');
-  assert.deepEqual([out.env.LEARN_APP_PARALLEL, out.env.LEARN_APP_HEADLESS, out.env.ANDROID_SERIAL], [undefined, undefined, undefined]);
+  assert.equal(out.env.ANDROID_SERIAL, undefined);
   assert.deepEqual(out.pluginDirs, []);
   for (const rule of ['Bash(adb:*)', 'Bash(emulator:*)', 'Bash(git push:*)', 'Bash(gh:*)', 'Bash(*platform-tools/adb*)']) assert.ok(out.disallowedTools.includes(rule), rule);
   assert.notEqual(out.permissionMode, 'bypassPermissions');

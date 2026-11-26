@@ -42,7 +42,6 @@ function fakeClone(dzHome, calls) {
       fs.writeFileSync(path.join(repo, 'app.txt'), 'app\n');
       g(repo, 'add', '-A');
       g(repo, 'commit', '-qm', 'first');
-      g(repo, 'checkout', '-q', '-b', 'learn-app/abc1');
     }
     put(repo, { 'inputs/spec-v1.md': `${markdown}\n` });
     return { repo, harnessRoot: repo };

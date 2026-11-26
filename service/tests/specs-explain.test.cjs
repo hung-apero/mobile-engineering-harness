@@ -91,7 +91,6 @@ test('handlers refuse a repo outside the project and a bad segment or Figma conf
   assert.throws(() => spec.prepare(job({ figma: true }), options), /đúng một server/);
   const out = spec.prepare(job({}), options);
   assert.equal(out.env.HARNESS_HEADLESS, '1');
-  assert.equal('LEARN_APP_TRACKING' in spec.prepare(job({}), { ...options, project: { ...project, live: true } }).env, false);
   assert.deepEqual(out.pluginDirs, []);
   assert.equal(out.model, 'sonnet');
   assert.equal(out.allowedTools.some(name => name.startsWith('mcp__')), false);

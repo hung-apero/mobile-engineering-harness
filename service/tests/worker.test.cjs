@@ -76,14 +76,12 @@ test('resume uses --resume and not --session-id', () => {
   assert.ok(worker.workerArgs({ prompt: 'p', sessionId: SESSION }).includes('--session-id'));
 });
 
-test('env: LEARN_APP_DISCORD_WEBHOOK and DISCORD_TOKEN removed; CLAUDE_CONFIG_DIR, BUG_FIX_STATE_DIR, LEARN_APP_BUILD_SLOTS=1 set; PATH and ANDROID_HOME kept', () => {
-  const base = { PATH: '/bin', ANDROID_HOME: '/sdk', LEARN_APP_DISCORD_WEBHOOK: 'w', DISCORD_TOKEN: 't', LEARN_APP_BUILD_SLOTS: '9', CLAUDE_CONFIG_DIR: '/other' };
+test('env: webhooks and DISCORD_TOKEN removed; CLAUDE_CONFIG_DIR, BUG_FIX_STATE_DIR set; PATH and ANDROID_HOME kept', () => {
+  const base = { PATH: '/bin', ANDROID_HOME: '/sdk', DZ_DISCORD_WEBHOOK: 'w', SLACK_WEBHOOK_URL: 'w', DISCORD_TOKEN: 't', CLAUDE_CONFIG_DIR: '/other' };
   const env = worker.workerEnv(base, '/dz');
-  assert.equal(env.LEARN_APP_DISCORD_WEBHOOK, undefined);
-  assert.equal(env.DISCORD_TOKEN, undefined);
+  assert.deepEqual([env.DZ_DISCORD_WEBHOOK, env.SLACK_WEBHOOK_URL, env.DISCORD_TOKEN], [undefined, undefined, undefined]);
   assert.equal(env.CLAUDE_CONFIG_DIR, '/dz/claude');
   assert.equal(env.BUG_FIX_STATE_DIR, '/dz/bug-fix-state');
-  assert.equal(env.LEARN_APP_BUILD_SLOTS, '1');
   assert.equal(env.PATH, '/bin');
   assert.equal(env.ANDROID_HOME, '/sdk');
   assert.equal(base.DISCORD_TOKEN, 't');

@@ -37,9 +37,9 @@ test('env overrides are applied after workerEnv and null deletes', () => {
 test('protected variables can neither be changed, removed nor brought back', () => {
   const env = workerEnv({ PATH: '/bin' }, '/dz');
   const overrides = {
-    CLAUDE_CONFIG_DIR: null, BUG_FIX_STATE_DIR: '/x', LEARN_APP_BUILD_SLOTS: '9', CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: '1',
+    CLAUDE_CONFIG_DIR: null, BUG_FIX_STATE_DIR: '/x', CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: '1',
     GH_TOKEN: 't', GITHUB_TOKEN: 't', ANTHROPIC_API_KEY: 'k', ANTHROPIC_AUTH_TOKEN: 'k', CLAUDECODE: '1',
-    DISCORD_TOKEN: 't', LEARN_APP_DISCORD_WEBHOOK: 'w', CLAUDE_CODE_OAUTH_TOKEN: 't',
+    DISCORD_TOKEN: 't', DZ_DISCORD_WEBHOOK: 'w', CLAUDE_CODE_OAUTH_TOKEN: 't',
   };
   assert.deepEqual(applyEnv(env, overrides), env);
   const shared = workerEnv({ PATH: '/bin', DZ_CLAUDE_CONFIG: 'shared' }, '/dz');

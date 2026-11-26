@@ -4,20 +4,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-const VENDOR = path.join(ROOT, 'vendor', 'learn-app');
+const VENDOR = path.join(ROOT, 'vendor');
 const SCANNED = ['src', 'bin', 'tests', 'channels'];
-const SKIPPED = path.join(ROOT, 'tests', 'legacy-build');
 const REQUIRE = /require\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/g;
-
-const VENDOR_USERS = new Set([
-  'src/specs/build-kit.cjs',
-  'src/specs/phase-build.cjs',
-]);
 
 function sources(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) return entry.name === 'node_modules' || full === SKIPPED ? [] : sources(full);
+    if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : sources(full);
     return /\.c?js$/.test(entry.name) ? [full] : [];
   });
 }
@@ -32,9 +26,10 @@ test('relative requires stay inside service/', () => {
   assert.deepEqual(outside, []);
 });
 
-test('only the listed transitional files require vendor/learn-app', () => {
+test('no vendored engine is left and nothing requires one', () => {
+  assert.equal(fs.existsSync(VENDOR), false);
   const users = files.filter(file => [...fs.readFileSync(file, 'utf8').matchAll(REQUIRE)]
     .some(match => path.resolve(path.dirname(file), match[1]).startsWith(`${VENDOR}${path.sep}`)))
     .map(file => path.relative(ROOT, file));
-  assert.deepEqual(users.filter(file => !VENDOR_USERS.has(file)), []);
+  assert.deepEqual(users, []);
 });
