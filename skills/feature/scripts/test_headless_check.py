@@ -129,6 +129,17 @@ class HeadlessCheckTest(unittest.TestCase):
         self.run.write("triage.json", ask_items())
         self.assertEqual(self.problems("clarify"), [])
 
+    def test_clarify_with_po_skipped_questions_needs_spec_naming_each(self):
+        answered = FIXTURE.replace("- **Đề xuất: A** — spec ghi", "**PO chọn (2026-11-26): A**\n- **Đề xuất: A** — spec ghi")
+        self.run.write("questions.md", answered)
+        self.run.write("triage.json", ask_items())
+        self.run.write("inputs/headless.json", {"segment": "clarify", "skipped": ["Q2"]})
+        self.assertTrue(any("clarified/spec-v" in p for p in self.problems("clarify")))
+        self.run.write("clarified/spec-v2.md", "# Spec đã làm rõ\n")
+        self.assertTrue(any("Q2" in p for p in self.problems("clarify")))
+        self.run.write("clarified/spec-v2.md", "# Spec đã làm rõ\n\n## Tạm theo đề xuất, PO chưa chốt\n\n- Q2 → A\n")
+        self.assertEqual(self.problems("clarify"), [])
+
     def test_build_result_commit_must_exist(self):
         subprocess.run(["git", "init", "-q", str(self.run.root)], check=True)
         subprocess.run(["git", "-C", str(self.run.root), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x"], check=True)

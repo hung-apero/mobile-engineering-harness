@@ -3,6 +3,7 @@ const files = require('./repo-files.cjs');
 const { patch, decide, findJob, park } = require('./kit.cjs');
 const { writeRework, reworkOf } = require('./rework.cjs');
 const { hashText } = require('../text-hash.cjs');
+const { parseQuestions } = require('./questions.cjs');
 
 const MAX_TRIES = 2;
 const MAX_REASON = 500;
@@ -17,14 +18,21 @@ const fresh = (spec, name, tries = 1) => {
   return { serial, segment: { name, serial, tries } };
 };
 
+function skippedOf({ repo, rounds = [], segment }) {
+  if (segment.name !== 'clarify') return [];
+  const shown = new Set(rounds.flatMap(round => round.ask));
+  return parseQuestions(files.read(repo, 'questions.md') ?? '').filter(q => shown.has(q.id) && !q.blocking && !q.answered).map(q => q.id);
+}
+
 const keyOf = spec => `${spec.id}#${spec.data.segment.name}-${spec.data.segment.serial}`;
 const jobOf = run => findJob(run.db, { project: run.project.key, kind: 'spec', key: keyOf(run.spec) });
 
 function writeConfig(run) {
   const { repo, app, figmaUrl, segment, notes, references = [] } = run.spec.data;
   const rework = reworkOf(run.spec).map(item => item.file);
+  const skipped = skippedOf(run.spec.data);
   writeRework(run);
-  const config = { spec: 'inputs/spec-v1.md', figma: figmaUrl ? { url: figmaUrl } : null, app, case: 'existing', segment: LEARN_SEGMENTS[segment.name] ?? segment.name, ...(notes && { notes }), ...(rework.length && { rework }), ...(references.length && { references }) };
+  const config = { spec: 'inputs/spec-v1.md', figma: figmaUrl ? { url: figmaUrl } : null, app, case: 'existing', segment: LEARN_SEGMENTS[segment.name] ?? segment.name, ...(notes && { notes }), ...(rework.length && { rework }), ...(references.length && { references }), ...(skipped.length && { skipped }) };
   files.write(repo, 'inputs/headless.json', `${JSON.stringify(config, null, 1)}\n`);
   files.remove(repo, 'blocked.json');
   files.remove(repo, 'headless-blocked.json');

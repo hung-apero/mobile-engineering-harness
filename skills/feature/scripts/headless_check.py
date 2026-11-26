@@ -134,6 +134,28 @@ def clarified_versions(run):
     return [int(m.group(1)) for m in (SPEC_VERSION.match(p.name) for p in folder.iterdir()) if m and int(m.group(1)) >= 2]
 
 
+def skipped_of(run):
+    path = run / "inputs" / "headless.json"
+    if not path.exists():
+        return []
+    data = read_json(path, [])
+    skipped = data.get("skipped") if isinstance(data, dict) else None
+    return [i for i in skipped if isinstance(i, str)] if isinstance(skipped, list) else []
+
+
+def clarify_problems(run, open_questions):
+    skipped = skipped_of(run)
+    if any(q["id"] not in skipped for q in open_questions):
+        return []
+    versions = clarified_versions(run)
+    if not versions:
+        return ["chưa có clarified/spec-v<N>.md (N ≥ 2)"]
+    name = f"spec-v{max(versions)}.md"
+    text = (run / "clarified" / name).read_text(encoding="utf-8")
+    missing = [i for i in skipped if not re.search(rf"\b{re.escape(i)}\b", text)]
+    return [f"clarified/{name} chưa ghi câu PO bỏ trống đang tạm theo đề xuất: {', '.join(missing)}"] if missing else []
+
+
 def progress_problems(run):
     path = run / "progress.json"
     if not path.exists():
@@ -186,8 +208,8 @@ def check(segment, root):
     else:
         found, open_questions = questions_check(run)
         problems += found
-        if segment == "clarify" and not open_questions and not clarified_versions(run):
-            problems.append("chưa có clarified/spec-v<N>.md (N ≥ 2)")
+        if segment == "clarify":
+            problems += clarify_problems(run, open_questions)
     return {"ok": not problems, "problems": problems, "blocked": None}
 
 
