@@ -27,7 +27,7 @@ function waitingRoles(db) {
 function specsOf(db, project, roles, now) {
   return store.listSpecs(db, { project })
     .filter(spec => !INACTIVE.includes(spec.state))
-    .map(spec => ({ id: spec.id, title: spec.title, state: spec.state, label: SPEC_LABELS[spec.state] ?? spec.state, waitingFor: roles.get(spec.id) ?? null, products: productsOf(spec, now) }));
+    .map(spec => ({ id: spec.id, title: spec.title || `Spec #${spec.id}`, state: spec.state, label: SPEC_LABELS[spec.state] ?? spec.state, waitingFor: roles.get(spec.id) ?? null, products: productsOf(spec, now) }));
 }
 
 function slotsOf(ctx, now) {

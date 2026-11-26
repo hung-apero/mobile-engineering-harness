@@ -77,6 +77,8 @@ test('each active spec lists only the products of the steps it went through', as
   const answered = { Q1: { kind: 'po' }, Q3: { kind: 'agent' } };
   const references = [{ kind: 'kb' }, { kind: 'linked' }];
   s.spec('ABC1', 'Mới nhận', 'reading');
+  s.spec('ABC1', '', 'needs-input', { needs: { kind: 'figma', role: 'po', reason: 'spec không có link Figma' } });
+  s.spec('ABC1', 'Gác', 'parked', { parked: { reason: 'đoạn clarify dừng giữa chừng 2 lần' } });
   s.spec('ABC1', 'Đang hỏi', 'quiz', { questions, answered });
   s.spec('ABC1', 'Chờ duyệt', 'review', { questions, answered, references, reviewVersion: 2 });
   s.spec('ABC1', 'Đã duyệt', 'approved', { questions, answered, reviewVersion: 1, approvedAt: at('2026-11-25T19:02:00') });
@@ -86,9 +88,11 @@ test('each active spec lists only the products of the steps it went through', as
   });
   assert.deepEqual(s.of('ABC1').specs.map(item => [item.title, item.products]), [
     ['Mới nhận', []],
-    ['Đang hỏi', ['3 câu hỏi: 1/2 câu PO đã trả lời, 1 câu agent tự chốt']],
-    ['Chờ duyệt', ['3 câu hỏi: 1/2 câu PO đã trả lời, 1 câu agent tự chốt', '2 tài liệu tham chiếu', 'Spec làm rõ v2 chờ PO duyệt']],
-    ['Đã duyệt', ['3 câu hỏi: 1/2 câu PO đã trả lời, 1 câu agent tự chốt', 'Spec làm rõ v1 PO duyệt lúc 19:02']],
+    ['Spec #2', ['Cần bổ sung: spec không có link Figma']],
+    ['Gác', ['Tạm gác: đoạn clarify dừng giữa chừng 2 lần']],
+    ['Đang hỏi', ['3 câu hỏi: PO trả lời 1, còn 1 câu chờ PO, agent tự chốt 1']],
+    ['Chờ duyệt', ['3 câu hỏi: PO trả lời 1, PO bỏ qua 1 câu không bắt buộc, agent tự chốt 1', '2 tài liệu tham chiếu', 'Spec làm rõ v2 chờ PO duyệt']],
+    ['Đã duyệt', ['3 câu hỏi: PO trả lời 1, PO bỏ qua 1 câu không bắt buộc, agent tự chốt 1', 'Spec làm rõ v1 PO duyệt lúc 19:02']],
     ['Đang thử', ['Spec làm rõ v1 PO duyệt lúc 09:30 ngày 24/11', 'Code cho bản 1.9.2: 2/2 plan xong', 'Bản cài #2 gửi PO lúc 18:40']],
   ]);
   const { token } = tokens.issueViewer(s.db, { keys: [] }, NOW);
