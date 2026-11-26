@@ -8,6 +8,8 @@ priority: P0
 
 Dispatcher cho feature delivery. **File này chỉ chọn scope.** Sau khi chọn, **đọc đúng file reference và theo procedure trong đó**:
 
+> Biến môi trường `HARNESS_HEADLESS=1` (service chạy không người) → đọc `references/headless.md` trước; chỗ nào khác với file này hay skill con thì theo `headless.md`.
+
 | Scope | Khi nào | Reference thực thi |
 |---|---|---|
 | single (default) | 1 feature mới | `references/single.md` |
