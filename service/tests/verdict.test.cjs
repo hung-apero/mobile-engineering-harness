@@ -120,3 +120,11 @@ test('a session is resumable after an assistant event or an earlier resume, neve
   assert.equal(canResume(summarize([ev.text(1), gone]), { resume: true }), false);
   assert.equal(canResume(summarize([ev.bad({ result: 'No conversation found with session ID: 1' })]), { resume: true }), false);
 });
+
+test('a lost connection to the API is offline, not a failure that uses up a resume, even after denials', () => {
+  const lost = { is_error: true, subtype: 'success', api_error: 'connection_failed', result: "API Error: Can't reach the API server — check your internet or DNS (ENOTFOUND)" };
+  assert.deepEqual(judge(ev.ok(lost)), { type: 'offline', code: 'X04' });
+  assert.equal(judge(ev.ok({ is_error: true, result: "API Error: Can't reach the API server (EAI_AGAIN)" })).type, 'offline');
+  assert.equal(judge(ev.ok({ ...lost, permission_denials: [denied('ls')] })).type, 'offline');
+  assert.equal(judge(ev.ok({ is_error: true, result: 'build failed' })).type, 'resume');
+});

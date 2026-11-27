@@ -37,21 +37,14 @@ test('the serial is the only device: ANDROID_SERIAL, wrapper first on PATH, adb 
   const wrapper = path.join(w.dzHome, 'adb-wrappers', 'AAA');
   assert.equal(out.env.PATH.split(path.delimiter)[0], wrapper);
   assert.equal(fs.statSync(path.join(wrapper, 'adb')).mode & 0o777, 0o700);
-  assert.ok(out.allowedTools.includes('Bash(adb -s AAA:*)'));
-  assert.ok(!out.allowedTools.includes('Bash(adb:*)'));
   assert.match(out.prompt, /-s AAA/);
 });
 
-test('allowed bash is the adb wrapper, gradlew, the ui-diff scripts and git, with push and remote denied', t => {
+test('bash is fully allowed, with push, remote, network tools and secrets still denied', t => {
   const w = world(t);
   const out = w.run();
-  const bash = out.allowedTools.filter(x => x.startsWith('Bash('));
-  const scripts = path.join(w.dzHome, 'harness', 'skills');
-  assert.deepEqual(bash.slice(0, 3), ['Bash(adb -s AAA:*)', 'Bash(./gradlew:*)', 'Bash(git:*)']);
-  for (const file of ['ui-diff/scripts/extract_frames.py', 'ui-diff/scripts/pair_board.py', 'ui-diff/scripts/aggregate.py', 'ui-diff-review/scripts/verdict.py', 'compare-ui-board/scripts/create_board.py']) {
-    assert.ok(bash.includes(`Bash(python3 ${path.join(scripts, file)}:*)`), file);
-  }
-  assert.equal(bash.length, 3 + 7);
+  assert.ok(out.allowedTools.includes('Bash'));
+  assert.equal(out.allowedTools.filter(x => x.startsWith('Bash(')).length, 0);
   for (const denied of ['git push', 'git remote', 'git config', 'git -c', 'gh', 'curl', 'ssh', 'sudo']) assert.ok(out.disallowedTools.includes(`Bash(${denied}:*)`), denied);
   assert.ok(out.disallowedTools.includes(`Read(/${w.dzHome}/secrets/**)`));
 });
@@ -114,4 +107,11 @@ test('the worker env drops git, github and firebase credentials', t => {
   const { env } = run();
   for (const name of ['GH_TOKEN', 'GITHUB_TOKEN', 'SSH_AUTH_SOCK', 'FIREBASE_TOKEN', 'GIT_DIR']) assert.equal(env[name], null, name);
   assert.equal(env.GIT_SSH_COMMAND, '/usr/bin/false');
+});
+
+test('the folder of the round is made before the worker starts and the prompt names the only shell commands it may use', t => {
+  const w = world(t);
+  const out = w.run({ round: 2 });
+  assert.ok(fs.statSync(path.join(w.repo, '.harness-run', 'uidiff-r2', 'run')).isDirectory());
+  assert.match(out.prompt, /uidiff-r2\/ \(đã có sẵn/);
 });

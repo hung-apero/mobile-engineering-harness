@@ -17,6 +17,7 @@ const { redact, firstLine } = require('./redact.cjs');
 const { bugStep } = require('./bugs/step.cjs');
 const { specStep } = require('./specs/step.cjs');
 const { boardStep } = require('./board/sync.cjs');
+const { holdOffline, networkStep } = require('./network-hold.cjs');
 
 const SLEEP_GAP_MS = 2 * 60 * 1000;
 const COMMAND_HOLDERS = ['X01', 'X08'];
@@ -82,6 +83,7 @@ async function superviseStep(ctx, now) {
   ctx.boot = false;
   for (const observation of quotas) observeQuota(ctx.db, observation);
   for (const action of actions) await step(ctx, 'decision', () => recordAction(ctx, action, now));
+  if (actions.some(action => action.offline)) holdOffline(ctx.db, now);
   return true;
 }
 
@@ -120,6 +122,7 @@ async function tick(ctx, now) {
   noticeSleep(ctx, now);
   const config = loadConfig(ctx);
   const supervised = await step(ctx, 'supervise', () => superviseStep(ctx, now));
+  if (supervised) await step(ctx, 'network', () => networkStep(ctx, now));
   if (supervised && config.base) await step(ctx, 'claim', () => claimStep(ctx, config, now));
   if (supervised && config.base) bugStep(ctx, config, now);
   if (supervised && config.base) specStep(ctx, config, now);

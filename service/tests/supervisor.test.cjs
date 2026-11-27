@@ -139,3 +139,15 @@ test('silent limit counts from the last event, not from start', async () => {
   assert.deepEqual(kinds(await pass(w, { now: NOW + 54 * MIN })), []);
   assert.deepEqual(kinds(await pass(w, { now: NOW + 55 * MIN })), [[id, 'resumed', 'X02']]);
 });
+
+test('process gone after losing the API connection → requeued with the session, no resume used (X04)', async () => {
+  const w = world();
+  const job = w.run('x');
+  w.log(job.id, ev.text(1), ev.ok({ is_error: true, api_error: 'connection_failed', result: "API Error: Can't reach the API server (ENOTFOUND)" }));
+  w.die(job);
+  const out = await pass(w);
+  assert.deepEqual(kinds(out), [[job.id, 'requeued', 'X04']]);
+  assert.equal(out.actions[0].offline, true);
+  const now = w.job(job.id);
+  assert.deepEqual([now.state, now.resume, now.resumes], ['queued', true, 0]);
+});

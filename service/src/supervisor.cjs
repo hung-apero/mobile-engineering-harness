@@ -95,6 +95,10 @@ function settleDead(ctx, job, { summary }, file) {
     jobs.requeue(db, job.id, now, { keepSession, ran: true });
     return act(job, 'requeued', verdict.code, { quota: verdict.quota });
   }
+  if (verdict.type === 'offline') {
+    jobs.requeue(db, job.id, now, { keepSession, ran: true });
+    return act(job, 'requeued', verdict.code, { attempt: job.attempt, offline: true });
+  }
   if (verdict.type === 'park') {
     jobs.park(db, job.id, verdict.reason, now);
     return act(job, 'parked', verdict.code, { denials: verdict.denials });

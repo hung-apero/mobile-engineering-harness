@@ -5,6 +5,8 @@ const RAW_MAX = 16000;
 const COMMAND_MAX = 80;
 const REASON_MAX = 2000;
 
+const OFFLINE = /Can't reach the API server|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT/;
+const offline = result => Boolean(result) && (result.api_error === 'connection_failed' || (result.is_error === true && OFFLINE.test(String(result.result ?? ''))));
 const succeeded = result => Boolean(result && result.is_error === false && result.subtype === 'success');
 const leftWork = ({ result, tasks, turnOpen }) => tasks?.length > 0 || result.subagent_stats?.killed?.system > 0 || turnOpen;
 
@@ -48,6 +50,7 @@ function judgeDead(summary, { command = false } = {}) {
   if (ok && !leftWork(summary)) return { type: 'done', code: null, result: resultOf(summary) };
   if (command && result && !ok) return { type: 'failed', code: null, result: { error: 'step_failed', ...resultOf(summary) } };
   if (quota?.status === 'rejected') return { type: 'quota', code: 'X01', quota };
+  if (offline(result)) return { type: 'offline', code: 'X04' };
   const blocked = !ok && Array.isArray(result?.permission_denials) ? result.permission_denials.map(safeDenial) : [];
   if (blocked.length) return { type: 'park', code: 'X03', reason: denialReason(blocked), denials: blocked };
   const error = errorOf(result, ok);
