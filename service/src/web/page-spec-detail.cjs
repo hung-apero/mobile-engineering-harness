@@ -15,13 +15,15 @@ const section = (id, title, inner) => `<section class="panel" aria-labelledby="$
 const list = items => (items.length ? `<ul class="rows">${items.join('')}</ul>` : '');
 const item = (title, lines = []) => `<li class="row"><div><p class="row-title">${title}</p>${lines.filter(Boolean).map(line => `<p class="meta">${line}</p>`).join('')}</div></li>`;
 
-function summary(detail) {
+const linkButtons = links => (links?.length ? `<p class="actions">${links.map(item => `<a class="button" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${safe(item.name)}</a>`).join(' ')}</p>` : '');
+
+function summary(detail, operator) {
   const { nowLine, issueLine } = specSummary(detail);
   const facts = [
     ['Trạng thái', detail.label], ['Phiên bản', detail.version ?? '—'], ['Bản cài', detail.install ? `#${detail.install}` : '—'], ['Chi phí worker', usd(detail.totalUsd)],
   ].map(([name, value]) => `<div><dt>${name}</dt><dd>${safe(value)}</dd></div>`).join('');
   const lines = [nowLine, issueLine, ...detail.products].filter(Boolean).map(line => `<p class="meta">${safe(line)}</p>`).join('');
-  return section('summary', 'Tóm tắt', `<dl class="facts">${facts}</dl>${lines || '<p class="empty">Không chờ ai, không có việc đang chạy.</p>'}`);
+  return section('summary', 'Tóm tắt', `<dl class="facts">${facts}</dl>${lines || '<p class="empty">Không chờ ai, không có việc đang chạy.</p>'}${operator ? linkButtons(detail.links) : ''}`);
 }
 
 function progress(detail) {
@@ -93,7 +95,7 @@ function specDetailPage(detail, { token, key, operator, now }) {
   const body = `<main id="main" class="wide">
 <p class="meta"><a href="${back}">← ${esc(key)}</a></p>
 <header class="top"><h1>${safe(detail.title)}</h1>${tag('plain', detail.label)}</header>
-${summary(detail)}
+${summary(detail, operator)}
 ${progress(detail)}
 ${logPanel(detail, token, key, operator)}
 ${problems(detail)}

@@ -6,6 +6,9 @@ const { productsOf } = require('./spec-products.cjs');
 const { stepsOf, stepLine } = require('./spec-steps.cjs');
 const { uiRounds } = require('./spec-ui-rounds.cjs');
 const { timeOf } = require('./bug-groups.cjs');
+const { webBase } = require('../specs/kit.cjs');
+
+const LINK_ROLES = { po: 'PO', qa: 'QA', dev: 'Dev' };
 
 const ROLES = { po: 'PO', qa: 'QA', dev: 'dev' };
 const SPEC_KINDS = ['spec', 'uidiff', 'explain'];
@@ -36,6 +39,25 @@ function decisionsOf(db, project, id) {
   return db.prepare("SELECT action, evidence, at FROM decisions WHERE project = ? AND action LIKE 'spec-%' ORDER BY id").all(project)
     .map(row => ({ action: row.action, at: row.at, evidence: parseJson(row.evidence) }))
     .filter(row => row.evidence?.specId === id);
+}
+
+function linkName(role, pathname) {
+  if (pathname.startsWith('/quiz/')) return `Mở quiz phần ${LINK_ROLES[role] ?? role}`;
+  if (pathname.startsWith('/review/')) return 'Mở trang duyệt spec';
+  return 'Mở link';
+}
+
+function linksOf(ctx, id) {
+  const rows = ctx.db.prepare("SELECT w.role, w.subject, w.link FROM kv k JOIN waits w ON w.id = CAST(k.value AS INTEGER) WHERE k.key LIKE ? AND w.state = 'open' AND w.link IS NOT NULL ORDER BY w.id").all(`spec-wait:${id}:%`);
+  const base = webBase(ctx).replace(/\/$/, '');
+  return rows.flatMap(row => {
+    try {
+      const url = new URL(row.link);
+      return [{ role: row.role, subject: row.subject, name: linkName(row.role, url.pathname), url: `${base}${url.pathname}${url.hash}` }];
+    } catch {
+      return [];
+    }
+  });
 }
 
 function waitingOf(db, id) {
@@ -100,6 +122,7 @@ function specDetail(ctx, key, id, now) {
   return {
     id: spec.id, title: spec.title || `Spec #${spec.id}`, state: spec.state, label: SPEC_LABELS[spec.state] ?? spec.state,
     waiting: waitingOf(ctx.db, spec.id),
+    links: linksOf(ctx, spec.id),
     running: live ? { jobId: live.id, kind: live.segment || live.kind, startedAt: live.startedAt } : null,
     steps: stepsOf(spec.state, decisions, data.parked?.from ?? data.needs?.from),
     issues: issuesOf(result),

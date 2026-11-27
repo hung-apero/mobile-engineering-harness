@@ -105,3 +105,24 @@ test('buttons only offer actions the api accepts', async t => {
   assert.doesNotMatch(await page(make('parked', 'parked', null)), /data-job-action/);
   assert.match(await page(make('parked', 'parked', { reason: 'tạm dừng từ board', from: 'building', mode: 'pause' })), /data-job-action="start"/);
 });
+
+test('operators get a button per open quiz or review link, on the current web host, viewers do not', async t => {
+  const s = await detailWorld(t);
+  const kv = require('../src/kv.cjs');
+  const { openWait } = require('../src/pings.cjs');
+  const id = s.spec('ABC1', 'building');
+  const open = (role, subject, link) => kv.set(s.db, `spec-wait:${id}:${role}`, openWait(s.db, { project: 'ABC1', role, subject, link }, NOW), NOW);
+  open('po', 'Chốt 10 câu phần PO', 'http://192.168.80.58:8788/quiz/tokpo123#po');
+  open('qa', 'Chốt 1 câu phần QA', 'http://192.168.80.58:8788/quiz/tokqa456#qa');
+  open('dev', 'Spec gác', null);
+  const target = `/board/${s.viewer([])}/ABC1/spec/${id}`;
+  const viewer = (await s.get(target)).text;
+  assert.ok(!viewer.includes('tokpo123') && !viewer.includes('/quiz/'));
+  const operator = (await s.get(target, await s.login())).text;
+  assert.match(operator, /<a class="button" href="http:\/\/127\.0\.0\.1:\d+\/quiz\/tokpo123#po"[^>]*>Mở quiz phần PO<\/a>/);
+  assert.match(operator, /href="http:\/\/127\.0\.0\.1:\d+\/quiz\/tokqa456#qa"[^>]*>Mở quiz phần QA</);
+  assert.equal((operator.match(/class="button" href=/g) ?? []).length, 2);
+  const board = (await s.get(`/board/${s.viewer([])}/ABC1`, await s.login())).text;
+  assert.match(board, /\/quiz\/tokpo123#po/);
+  assert.doesNotMatch((await s.get(`/board/${s.viewer([])}/ABC1`)).text, /\/quiz\//);
+});

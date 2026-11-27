@@ -48,10 +48,10 @@ const ROUTES = [
   tokenCall('review', 'approve', review.approve),
   tokenCall('review', 'feedback', review.feedback),
   view('board', 'viewer', /^\/board\/([\w-]{1,200})$/, ({ ctx, viewer, token, now }) => boardListPage(boardModel(ctx, viewer, now), token, now)),
-  view('board-project', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}$`), ({ ctx, viewer, token, params, now }) => {
+  view('board-project', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}$`), ({ ctx, viewer, token, params, operator, now }) => {
     const found = projectBoard(ctx, viewer, params[1], now);
     if (!found) throw new WebError(404, 'NOT_FOUND');
-    return boardProjectPage(found, token, now);
+    return boardProjectPage(found, token, now, operator);
   }),
   view('board-spec', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}/spec/(\\d{1,9})$`), ({ ctx, viewer, token, params, operator, now }) => {
     const key = params[1];

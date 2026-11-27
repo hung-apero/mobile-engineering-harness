@@ -25,12 +25,15 @@ function waitingRoles(db) {
   return roles;
 }
 
-function specsOf(db, project, roles, now) {
+const cardOf = detail => ({ summary: specSummary(detail), links: detail.links });
+
+function specsOf(ctx, project, roles, now) {
+  const { db } = ctx;
   return store.listSpecs(db, { project })
     .filter(spec => !INACTIVE.includes(spec.state))
     .map(spec => ({
       id: spec.id, title: spec.title || `Spec #${spec.id}`, state: spec.state, label: SPEC_LABELS[spec.state] ?? spec.state,
-      waitingFor: roles.get(spec.id) ?? null, products: productsOf(spec, now), summary: specSummary(specDetail({ db }, project, spec.id, now)),
+      waitingFor: roles.get(spec.id) ?? null, products: productsOf(spec, now), ...cardOf(specDetail(ctx, project, spec.id, now)),
     }));
 }
 
@@ -53,7 +56,7 @@ function boardModel(ctx, { keys = [] }, now) {
     slots: attempt(() => slotsOf(ctx, now)),
     projects: shown.map(({ key }) => ({
       key,
-      specs: specsOf(ctx.db, key, roles, now),
+      specs: specsOf(ctx, key, roles, now),
       bugs: bugBoard(ctx.db, key, now),
       batches: batchesOf(ctx.db, key),
       activity: activityOf(ctx.db, key, now),
