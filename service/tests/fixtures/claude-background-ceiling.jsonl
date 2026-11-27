@@ -1,0 +1,20 @@
+{"type": "system", "subtype": "init"}
+{"type": "rate_limit_event", "rate_limit_info": {"status": "allowed", "resetsAt": 1796018400, "unifiedWindows": {"seven_day": {"utilization": 0.09, "resetsAt": 1796018400, "status": "allowed"}}}}
+{"type": "system", "subtype": "thinking_tokens"}
+{"type": "system", "subtype": "thinking_tokens"}
+{"type": "assistant", "parent_tool_use_id": null}
+{"type": "assistant", "parent_tool_use_id": null}
+{"type": "system", "subtype": "background_tasks_changed", "tasks": [{"task_id": "aa9e27e51d4dd51fb"}]}
+{"type": "system", "subtype": "task_started", "task_id": "aa9e27e51d4dd51fb"}
+{"type": "user"}
+{"type": "assistant", "parent_tool_use_id": null}
+{"type": "assistant", "parent_tool_use_id": "toolu_01VUAgTh2N9e65gTuyc141V8"}
+{"type": "system", "subtype": "task_progress", "task_id": "aa9e27e51d4dd51fb"}
+{"type": "system", "subtype": "task_started", "task_id": "bntwz7zay"}
+Background tasks still running 5s after the last turn; stopping them.
+{"type": "system", "subtype": "task_updated", "task_id": "aa9e27e51d4dd51fb"}
+{"type": "system", "subtype": "task_notification", "task_id": "aa9e27e51d4dd51fb", "status": "stopped"}
+{"type": "system", "subtype": "background_tasks_changed", "tasks": []}
+{"type": "result", "subtype": "success", "is_error": false, "result": "LAUNCHED", "num_turns": 2, "total_cost_usd": 0.0018364299999999998, "permission_denials": [], "terminal_reason": "completed", "subagent_stats": {"spawned": 1, "killed": {"parent": 0, "user": 0, "system": 1}}}
+{"type": "system", "subtype": "task_updated", "task_id": "bntwz7zay"}
+{"type": "system", "subtype": "task_notification", "task_id": "bntwz7zay", "status": "stopped"}

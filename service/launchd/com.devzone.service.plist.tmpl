@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>{{LABEL}}</string>
+  <key>DevZoneManaged</key>
+  <true/>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/caffeinate</string>
+    <string>-i</string>
+    <string>{{NODE}}</string>
+    <string>{{DZ_BIN}}</string>
+    <string>run</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>{{DZ_HOME}}</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>StandardOutPath</key>
+  <string>{{DZ_HOME}}/logs/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{DZ_HOME}}/logs/launchd.err.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+{{ENV_ENTRIES}}
+  </dict>
+</dict>
+</plist>

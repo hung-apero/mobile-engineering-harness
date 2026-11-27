@@ -1,0 +1,15 @@
+{
+  "name": "dev-zone-service",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "yaml": "^2.8.1"
+  },
+  "scripts": {
+    "test": "node --disable-warning=ExperimentalWarning --require ./tests/helpers/no-discord.cjs --test \"tests/*.test.cjs\""
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "enabledPlugins": { "discord@claude-plugins-official": true },
+  "disableClaudeAiConnectors": true,
+  "autoMemoryEnabled": false,
+  "permissions": {
+    "defaultMode": "dontAsk",
+    "disableBypassPermissionsMode": "disable",
+    "denyInsteadOfPrompting": true,
+    "allow": ["mcp__dz__*"],
+    "deny": [
+      "Bash", "Read", "Edit", "Write", "NotebookEdit", "Glob", "Grep", "WebFetch", "WebSearch", "Agent", "Skill",
+      "mcp__plugin_discord_discord__react",
+      "mcp__plugin_discord_discord__list_emojis",
+      "mcp__plugin_discord_discord__edit_message",
+      "mcp__plugin_discord_discord__fetch_messages",
+      "mcp__plugin_discord_discord__download_attachment",
+      "mcp__plugin_discord_discord__create_thread"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__plugin_discord_discord__.*",
+        "hooks": [{ "type": "command", "command": "{{NODE}}", "args": ["{{GUARD}}", "{{REPLY_CHANNELS}}", "{{DB}}"], "timeout": 10, "onFailure": "block" }]
+      }
+    ]
+  }
+}

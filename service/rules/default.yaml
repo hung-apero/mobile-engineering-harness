@@ -1,0 +1,14 @@
+limits: { code_agents_working: 2, code_agents_off: 3, reserved_for_bug: 1, build: 1, bugs_per_project: 2, batch: { max_bugs: 8, max_hours: 4 } }
+rules:
+  P01: { every_working_hours: 4, backup_from_ping: 3, daily_after_ping: 3 }
+  P02: { every_working_days: 1 }
+  P03: { every_working_days: 1 }
+  X01: { stop_new_at: 0.8 }
+  X02: { silent_minutes: 30, max_resumes: 1 }
+  X05: { min_free_gb: 15 }
+  X07: { max_consecutive_failures: 3 }
+  B09: { reopen_limit: 3 }
+  F01: { fix_rounds: 2 }
+  F07: { max_pr_lines: 400 }
+  Q03: { max_build_failures: 4 }
+  Q06: { quiet_hours: 24 }

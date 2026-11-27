@@ -153,3 +153,8 @@ product_extensions:
   constitution_dir: "constitution"    # Thư mục overlay chứa product-specific rule
   blueprints_dir: "blueprints"
   evaluations_dir: "evaluations"
+
+knowledge:
+  line: ""                            # Optional. Dòng app trong company-ai-knowledge-hub (MCP `knowledge-hub`).
+                                      # Options: learn | photo | fitness (theo metadata/product-lines.yaml của hub).
+                                      # `global` luôn được nạp. Để trống → agent chỉ nạp `global` và cảnh báo.

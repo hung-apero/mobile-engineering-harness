@@ -72,8 +72,13 @@ fi
 
 # --- Package root (namespace)
 PACKAGE_ROOT=""
+APP_FILES=()
+OTHER_FILES=()
 for f in "${GRADLE_FILES[@]}"; do
-  pkg=$(grep -E 'namespace\s*=' "$f" 2>/dev/null | head -1 | sed -E 's/.*namespace\s*=\s*"([^"]+)".*/\1/')
+  if grep -qE 'com\.android\.application|android\.application' "$f" 2>/dev/null; then APP_FILES+=("$f"); else OTHER_FILES+=("$f"); fi
+done
+for f in ${APP_FILES[@]+"${APP_FILES[@]}"} ${OTHER_FILES[@]+"${OTHER_FILES[@]}"}; do
+  pkg=$(grep -E 'namespace[[:space:]]*=' "$f" 2>/dev/null | head -1 | sed -E 's/.*namespace[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/' || true)
   if [ -n "$pkg" ]; then
     PACKAGE_ROOT="$pkg"
     break
@@ -82,7 +87,7 @@ done
 if [ -z "$PACKAGE_ROOT" ]; then
   manifest=$(find "$PROJECT_ROOT" -maxdepth 5 -name "AndroidManifest.xml" 2>/dev/null | head -1)
   if [ -n "$manifest" ]; then
-    PACKAGE_ROOT=$(grep -oE 'package="[^"]+"' "$manifest" 2>/dev/null | head -1 | sed -E 's/package="([^"]+)"/\1/')
+    PACKAGE_ROOT=$(grep -oE 'package="[^"]+"' "$manifest" 2>/dev/null | head -1 | sed -E 's/package="([^"]+)"/\1/' || true)
   fi
 fi
 [ -z "$PACKAGE_ROOT" ] && PACKAGE_ROOT="com.example.app"
@@ -93,7 +98,7 @@ settings_file=""
 [ -f "$SETTINGS_GRADLE_KTS" ] && settings_file="$SETTINGS_GRADLE_KTS"
 [ -z "$settings_file" ] && [ -f "$SETTINGS_GRADLE" ] && settings_file="$SETTINGS_GRADLE"
 if [ -n "$settings_file" ]; then
-  mods=$(grep -oE 'include\(\s*"[^"]+"' "$settings_file" 2>/dev/null | sed -E 's/include\(\s*"([^"]+)"/\1/' | sed 's|^:||' | tr '\n' ',' | sed 's/,$//')
+  mods=$(grep -oE 'include\([[:space:]]*"[^"]+"' "$settings_file" 2>/dev/null | sed -E 's/include\([[:space:]]*"([^"]+)"/\1/' | sed 's|^:||' | tr '\n' ',' | sed 's/,$//' || true)
   if [ -n "$mods" ]; then
     MODULES_JSON="[\"${mods//,/\",\"}\"]"
   fi

@@ -1,0 +1,33 @@
+key: EXAMPLE
+repo: owner/name
+base: main
+checkout: $DZ_HOME/workspaces/EXAMPLE
+flavor: appDev
+package: com.example.app
+jiraStatus:
+  waiting: ["To Do", "Open"]
+  inProgress: "In Progress"
+  resolved: "Done"
+  reopened: "Reopened"
+  done: ["Closed", "Done"]
+people:
+  po: "123456789012345678"
+  poBackup: "123456789012345679"
+  qa: "123456789012345680"
+  devOnCall: "123456789012345681"
+specUrl: https://example.atlassian.net/wiki/spaces/EX/pages/1
+figmaUrl: https://www.figma.com/design/xxxx
+excludedDevices: []
+enabled: true
+live: false
+discord: false
+localFiles: ["local.properties"]
+commands:
+  compile: ["./gradlew", "compileAppDevDebugKotlin", "--no-build-cache"]
+  unitTest: ["./gradlew", "testAppDevDebugUnitTest", "--no-build-cache"]
+  lint: ["./gradlew", "lintAppDevDebug"]
+  assemble: ["./gradlew", "assembleAppDevDebug"]
+  distribute: ["./gradlew", "appDistributionUploadAppDevDebug"]
+  apkGlob: "app/build/outputs/apk/appDev/debug/*.apk"
+harnessCommit: "b4f5855"
+forbidden: ["**/billing/**"]

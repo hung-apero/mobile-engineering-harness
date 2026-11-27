@@ -1,0 +1,23 @@
+.columns { display: grid; gap: 24px; align-items: start; }
+.columns > *, aside > * { min-width: 0; }
+aside { display: grid; gap: 16px; }
+.spec { padding: clamp(16px, 3vw, 36px); }
+.spec > :is(h2, h3) { margin-top: 28px; }
+.spec > :first-child { margin-top: 0; }
+.spec h2 { font-size: 1.35rem; }
+.spec h3 { font-size: 1.12rem; }
+.spec > p, .spec > ul, .spec > ol, .spec > blockquote { max-width: 70ch; }
+.spec :is(p, h2, h3, h4, h5, h6, pre).changed { box-shadow: -10px 0 0 -7px var(--new-edge); padding-left: 2px; }
+.spec tr.changed td:first-child, .spec tr.changed th:first-child { box-shadow: inset 3px 0 0 var(--new-edge); }
+.spec .tag { vertical-align: 1px; }
+.diff { display: grid; gap: 4px; font-size: .9rem; white-space: pre-wrap; max-height: 480px; overflow-y: auto; }
+.diff li { padding: 4px 10px; border-left: 3px solid var(--new-edge); border-radius: 4px; background: var(--new); }
+.diff ins { background: none; padding: 0; }
+.diff .del { border-color: var(--bad); background: var(--bad-wash); }
+.decide { margin-top: 32px; display: grid; gap: 16px; }
+.pair { display: grid; gap: 16px; }
+.notice { max-width: none; }
+@media (min-width: 800px) { .pair { grid-template-columns: 1fr 1fr; align-items: start; } }
+@media (min-width: 1000px) { .columns { grid-template-columns: minmax(0, 1fr) 320px; } aside { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; } }
+.facts { display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin: 24px 0; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.facts > div { padding: 14px 20px; background: var(--surface); overflow-wrap: anywhere; }

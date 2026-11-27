@@ -1,7 +1,7 @@
 ---
 name: bug-reviewer
 description: Review độc lập PR fix bug Android/KMP trước khi PR được ready. Chấm theo rule project (Clean Architecture, MVI, Compose, coroutines — checklist A–J của coding-review) và kiểm fix có đặt đúng root cause/đúng layer hay chỉ vá triệu chứng. Read-only, trả APPROVE hoặc REQUEST_CHANGES kèm rule + file:line. Dùng bởi skill bug-fix (mode batch và mode note) sau khi bug-fixer bàn giao.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__knowledge-hub__search_knowledge, mcp__knowledge-hub__read_knowledge, mcp__knowledge-hub__list_knowledge
 skills:
   - coding-review
 model: opus
@@ -27,8 +27,9 @@ Mindset `agents/reviewer.md` áp cho PR fix bug: audit độc lập, chỉ raise
    - Diff có mẫu nào trong bảng "Cấm fix ngọn" của `agents/bug-fixer.md` không (delay né race, catch nuốt lỗi, guard UI che contract sai, flag rời, `if` đặc cách, logic trong Composable, `@Suppress`…)?
    - Fix có làm hỏng hoặc bỏ sót caller khác của code bị sửa không? Với mỗi symbol / Contract bị đổi trong diff: `graphify affected "<symbol>" --graph <G> --depth 1` (`G` = `Graph:` trong prompt, không có thì `<harness>/scripts/code-graph.sh ensure <worktree>`; lỗi → bỏ qua) + grep usage (DI, route, resource). Caller graph liệt kê mà diff không xử lý → Read để xác nhận trước khi ghi finding.
 3. Checklist A–J của `skills/coding-review/SKILL.md` §Step 2 cho phần diff (không review code ngoài diff, trừ khi diff làm nó sai).
-4. Test: có test regression chứng minh hành vi bug (state/effect), không chỉ test chi tiết cài đặt; test không bị tắt/nới.
-5. Gates: chạy lại nhanh nếu rẻ (`konsist`, `detekt`, unit test module bị đụng) hoặc đọc log fixer ghi; số liệu không khớp → finding.
+4. KB rules: mỗi mã trong `## KB rules` của `fix-design.md` → `read_knowledge("<slug>")` (MCP `knowledge-hub`), kiểm diff + chạy lệnh "Tự kiểm" của mã; vi phạm → finding ghi `violates XX-nn`. Triệu chứng bug khớp luật mà fixer không liệt kê → `search_knowledge(<triệu chứng>)` xác nhận rồi ghi finding.
+5. Test: có test regression chứng minh hành vi bug (state/effect), không chỉ test chi tiết cài đặt; test không bị tắt/nới.
+6. Gates: chạy lại nhanh nếu rẻ (`konsist`, `detekt`, unit test module bị đụng) hoặc đọc log fixer ghi; số liệu không khớp → finding.
 
 ## Verdict
 
@@ -48,7 +49,7 @@ Gắn `[SUGGESTION][auto-apply]` chỉ khi cả bốn đúng: sửa một chỗ 
 Verdict: APPROVE | REQUEST_CHANGES | ESCALATE
 Root-cause fix: YES | NO (<lý do 1 câu>)
 Findings:
-- [BLOCKER|HIGH|SUGGESTION] <rule id hoặc "symptom-fix"> <file:line> — <vấn đề> → <cách sửa đúng>
+- [BLOCKER|HIGH|SUGGESTION] <rule id, "violates XX-nn" hoặc "symptom-fix"> <file:line> — <vấn đề> → <cách sửa đúng>
 - [SUGGESTION][auto-apply] <file:line> — <vấn đề> → thay bằng: `<nguyên văn dòng mới>`
 Gates: konsist=<PASS|FAIL|N/A> detekt=<…> unit=<…>
 ```
