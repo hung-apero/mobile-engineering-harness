@@ -2,6 +2,7 @@ const { OTHER, list, isOpen, openQuestions, chosen, chatsOf } = require('./quiz-
 const { WebError, invalid, closed, stale } = require('./web-error.cjs');
 
 const BY = 'po';
+const ROLES = ['po', 'dev', 'qa'];
 const MAX_ANSWER = 2000;
 const MAX_ASK = 1000;
 const MAX_WAITING = 5;
@@ -41,7 +42,8 @@ async function draft(input) {
 
 async function submit(input) {
   await openQuiz(input);
-  const result = await input.facade.submit(input.specId, BY, input.now);
+  const role = ROLES.includes(input.body.role) ? input.body.role : undefined;
+  const result = await input.facade.submit(input.specId, role ?? BY, input.now, role);
   if (!result?.ok) throw new WebError(400, 'MISSING', 'Còn câu cần trả lời trước khi gửi.', { missing: list(result?.missing) });
   return {};
 }

@@ -2,7 +2,7 @@ const segment = require('./segment.cjs');
 const files = require('./repo-files.cjs');
 const { blockedOf, line } = require('./verify.cjs');
 const { copyLocalFiles } = require('./local-files.cjs');
-const { settleRound, assumeBlock } = require('./provisional.cjs');
+const { settleRound, assumeBlock, openItems, openRound } = require('./provisional.cjs');
 const { noteSelfChange } = require('./change.cjs');
 const { move, decide, park, needInput, closeWaits } = require('./kit.cjs');
 const { buildOf, saveBuild } = require('./build-kit.cjs');
@@ -35,6 +35,7 @@ function toSmoke(run, result) {
   decide(run, 'F03', 'spec-coded', { plans: result.plans, commit: result.commit });
   clearRework(run);
   move(run, 'smoking', { data: segment.fresh(run.spec, 'smoke') });
+  if (openItems(run.spec).length) openRound(run, `build-${run.spec.data.serial}`);
 }
 
 function restart(run, reason, error) {

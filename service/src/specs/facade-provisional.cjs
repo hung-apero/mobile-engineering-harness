@@ -1,18 +1,19 @@
 const store = require('./store.cjs');
 const { draftsOf } = require('./answer-ledger.cjs');
-const { provOf, openItems } = require('./provisional.cjs');
+const { provOf, roleOf, rolesOpen, unsentOf, sentIds, ROLES } = require('./provisional.cjs');
 const { isBuilding } = require('./build-kit.cjs');
-const { submission } = require('./kit.cjs');
 const { currentChats } = require('./chats.cjs');
 const { chosen } = require('../web/quiz-model.cjs');
 
 const isProvisional = spec => isBuilding(spec) && provOf(spec).round !== null;
+const roleIn = (role, fallback = 'po') => (ROLES.includes(role) ? role : fallback);
 
 function questionOf(item) {
   return {
-    id: item.qid, title: item.title, body: '', blocking: true, options: item.options.map(({ label, text }) => ({ label, text })),
-    proposal: item.picked ? { label: item.picked, reason: item.why || 'Đang tạm làm theo lựa chọn này' } : null,
-    reason: item.value === null ? 'Khó quay lại nên phần này đang chờ bạn chọn.' : 'Câu này phát sinh khi code. Đang tạm làm theo đề xuất, cần bạn xác nhận hoặc đổi.',
+    id: item.qid, role: roleOf(item), title: item.title, body: item.body ?? '', blocking: true,
+    options: item.options.map(({ label, text }) => ({ label, text })), current: item.picked,
+    proposal: { label: item.recommend ?? item.picked, reason: item.why || 'Đang tạm làm theo lựa chọn này' },
+    reason: 'Câu này phát sinh khi code. Code đang làm theo lựa chọn A; chọn A để giữ, chọn khác thì code sẽ được sửa.',
   };
 }
 
@@ -20,28 +21,45 @@ function view(db, spec) {
   const prov = provOf(spec);
   const drafts = draftsOf(db, spec, prov.round);
   const asked = new Set(prov.asked);
-  return Object.values(prov.items).filter(item => item.said || asked.has(item.qid)).map(item => ({
-    ...questionOf(item), draft: drafts.get(item.qid) ?? null, answered: item.status !== 'open',
-    answer: item.status === 'open' ? null : { kind: 'po', label: item.said.label, text: item.said.text },
-  }));
+  return Object.values(prov.items).filter(item => item.said || asked.has(item.qid)).map(item => {
+    const sent = sentIds(prov, roleOf(item)).has(item.qid);
+    return {
+      ...questionOf(item), draft: drafts.get(item.qid) ?? null, answered: item.status !== 'open', sent,
+      answer: item.status === 'open' ? null : { kind: 'po', label: item.said.label, text: item.said.text, by: item.said.by },
+    };
+  });
+}
+
+function sectionsOf(spec, ask) {
+  const prov = provOf(spec);
+  const open = rolesOpen(spec);
+  return ROLES.map(role => ({
+    role, open: open.includes(role), count: ask.filter(question => question.role === role).length, sent: prov.sent?.[role] ? { by: prov.sent[role].by, at: prov.sent[role].at } : null,
+  })).filter(section => section.count > 0);
 }
 
 function provisionalQuiz(ctx, spec) {
   const { id, project, title, state, updatedAt } = spec;
   const { round } = provOf(spec);
-  const sent = submission(ctx.db, id, round) !== null;
-  const open = !sent && openItems(spec).length > 0;
-  return { spec: { id, project, title, state: open ? 'quiz' : state, updatedAt }, round, submitted: sent, provisional: true, ask: view(ctx.db, spec), auto: [], chats: currentChats(ctx.db, spec) };
+  const open = rolesOpen(spec).length > 0;
+  const ask = view(ctx.db, spec);
+  return {
+    spec: { id, project, title, state: open ? 'quiz' : state, updatedAt }, round, submitted: !open && ask.length > 0 && ask.every(question => question.answered || question.sent), provisional: true,
+    ask, sections: sectionsOf(spec, ask), auto: [], chats: currentChats(ctx.db, spec),
+  };
 }
 
-const canEdit = (db, spec) => openItems(spec).length > 0 && submission(db, spec.id, provOf(spec).round) === null;
+const canEdit = (db, spec, role) => (role ? rolesOpen(spec).includes(role) : rolesOpen(spec).length > 0);
 
-function submitProvisional(ctx, spec, by, now) {
-  const { round } = provOf(spec);
-  const drafts = draftsOf(ctx.db, spec, round);
-  const missing = openItems(spec).filter(item => !chosen(drafts.get(item.qid))).map(item => item.qid);
+function submitProvisional(ctx, spec, role, by, now) {
+  const prov = provOf(spec);
+  const items = unsentOf(spec, role);
+  const drafts = draftsOf(ctx.db, spec, prov.round);
+  const missing = items.filter(item => !chosen(drafts.get(item.qid))).map(item => item.qid);
   if (missing.length) return { ok: false, missing };
-  return { ok: store.submitRound(ctx.db, spec.id, round, by, now), missing: [] };
+  const ids = [...sentIds(prov, role), ...items.map(item => item.qid)];
+  const saved = store.patchData(ctx.db, spec.id, { prov: { ...prov, sent: { ...prov.sent, [role]: { by, at: now, ids } } } }, now);
+  return { ok: Boolean(saved), missing: [] };
 }
 
-module.exports = { isProvisional, provisionalQuiz, submitProvisional, canEdit, questionOf };
+module.exports = { isProvisional, provisionalQuiz, submitProvisional, canEdit, questionOf, roleIn };

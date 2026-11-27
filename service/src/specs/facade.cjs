@@ -2,6 +2,7 @@ const store = require('./store.cjs');
 const quiz = require('./facade-quiz.cjs');
 const { createReview } = require('./facade-review.cjs');
 const { overview } = require('./overview.cjs');
+const { askNow } = require('./ask-now.cjs');
 const { parseRef } = require('./confluence.cjs');
 const { NO_FIGMA, FIGMA } = require('./phase-read.cjs');
 const { loadProjects } = require('../projects.cjs');
@@ -66,8 +67,9 @@ function createFacade(ctx) {
     quiz: id => quiz.quiz(ctx, specOf(id)),
     saveDraft: (id, input, by, now) => quiz.saveDraft(ctx, specOf(id), input, by, now),
     changeAuto: (id, qid, choice, by, now) => quiz.changeAuto(ctx, specOf(id), { ...choice, qid }, by, now),
-    submit: (id, by, now) => withProject(id, (project, spec) => quiz.submit(ctx, project, spec, by, now)),
+    submit: (id, by, now, role) => withProject(id, (project, spec) => quiz.submit(ctx, project, spec, by, now, role)),
     ask: (id, qid, text, by, now) => quiz.ask(ctx, specOf(id), qid, text, by, now),
+    askNow: (id, now) => withProject(id, (project, spec) => askNow(ctx, project, spec, now)),
     review: id => reviews.review(specOf(id)),
     approve: async (id, input, by, now) => withProject(id, (project, spec) => reviews.approve(project, spec, input, by, now)),
     feedback: (id, input, by, now) => withProject(id, (project, spec) => reviews.feedback(project, spec, input, by, now)),

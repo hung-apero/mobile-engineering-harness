@@ -80,7 +80,7 @@ function fakeFacade(specs = []) {
     calls.push({ name, args });
     return typeof result === 'function' ? result(...args) : result;
   };
-  const specOf = id => ({ id, project: views.get(id).project, title: views.get(id).title ?? `S${id}`, state: views.get(id).state, updatedAt: views.get(id).updatedAt ?? NOW - 60 * MIN });
+  const specOf = id => ({ id, project: views.get(id).project, title: views.get(id).title ?? `S${id}`, state: views.get(id).state, updatedAt: views.get(id).updatedAt ?? NOW - 60 * MIN, asks: views.get(id).asks ?? null });
   const question = (id, extra = {}) => ({ id, title: id, options: [{ label: 'A', text: 'Một' }, { label: 'B', text: 'Hai' }], answered: false, ...extra });
   return {
     calls,
@@ -96,6 +96,7 @@ function fakeFacade(specs = []) {
     review: async id => ({ spec: specOf(id), sha: views.get(id).sha ?? SHA, approved: false }),
     approve: record('approve', { ok: true }),
     feedback: record('feedback', { ok: true }),
+    askNow: record('askNow', id => ({ ok: true, line: `Đã gửi 2 câu chờ chốt của spec #${id}: PO 1 · Dev 1` })),
   };
 }
 

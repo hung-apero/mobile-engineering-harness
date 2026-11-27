@@ -12,6 +12,7 @@ const { openItems } = require('./specs/provisional.cjs');
 const { closeWaits, linkFor, webBase, nameOf } = require('./specs/kit.cjs');
 const building = require('./spec-build-commands.cjs');
 const { cancelSpec } = require('./specs/cancel.cjs');
+const { askNow } = require('./specs/ask-now.cjs');
 const { record } = require('./decisions.cjs');
 const { ruleVersionOf } = require('./bugs/effects.cjs');
 const { clearParked } = require('./blocks.cjs');
@@ -22,7 +23,7 @@ const { clock } = require('./status.cjs');
 
 const KEY = /^[A-Z][A-Z0-9]+$/;
 const ID = /^[1-9]\d{0,14}$/;
-const SUBS = { show: validId, link: validId, refresh: validId, retry: validRetry, cancel: validId, build: building.validBuild, prereq: building.validPrereq, list: args => args.length === 0 || (args.length === 1 && KEY.test(args[0])) };
+const SUBS = { show: validId, link: validId, refresh: validId, retry: validRetry, cancel: validId, ask: validId, build: building.validBuild, prereq: building.validPrereq, list: args => args.length === 0 || (args.length === 1 && KEY.test(args[0])) };
 
 function validId(args) {
   return args.length === 1 && ID.test(args[0]);
@@ -118,6 +119,13 @@ async function refresh(ctx, [id], now) {
   return [`Spec #${id} đã đổi: đọc lại từ đầu kèm câu trả lời cũ, lời duyệt cũ hết hiệu lực`];
 }
 
+function ask(ctx, [id], now) {
+  const spec = specOf(ctx, id);
+  const sent = askNow(ctx, loadedProject(ctx, spec.project), spec, now);
+  if (!sent.ok) throw new ExpectedError(sent.error);
+  return [sent.line];
+}
+
 async function cancel(ctx, [id], now) {
   const { from } = await cancelSpec(ctx, specOf(ctx, id).id, now);
   return [`Spec #${id} đã huỷ (từ ${from})`];
@@ -150,7 +158,7 @@ async function spec(ctx, args, now) {
   const [first, ...rest] = args;
   if (first === 'build') return building.build(ctx, specOf(ctx, rest[0]), rest, now);
   if (first === 'prereq') return building.prereq(ctx, specOf(ctx, rest[0]), rest, now);
-  const run = { list, show, link, refresh, retry, cancel }[Object.hasOwn(SUBS, first) ? first : ''];
+  const run = { list, show, link, refresh, retry, cancel, ask }[Object.hasOwn(SUBS, first) ? first : ''];
   return run ? run(ctx, rest, now) : create(ctx, args, now);
 }
 

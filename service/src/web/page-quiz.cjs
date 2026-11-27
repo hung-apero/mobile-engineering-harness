@@ -2,6 +2,7 @@ const { esc, page, PO_TAG, AGENT_TAG } = require('./html.cjs');
 const { inline } = require('./markdown-inline.cjs');
 const { list, isOpen, openQuestions, earlierQuestions, chosen, chatsOf } = require('./quiz-model.cjs');
 const { card, choices, answerLabel } = require('./question-view.cjs');
+const { rolesPage } = require('./page-quiz-roles.cjs');
 
 const STATES = {
   new: 'Hệ thống đang chuẩn bị câu hỏi. Bạn sẽ được nhắn khi xong.',
@@ -80,17 +81,18 @@ function openPage(quiz) {
   const nav = questions.map((question, i) => `<li><a href="#q-${esc(question.id)}" data-nav="${esc(question.id)}"${chosen(question.draft) ? ' class="answered"' : ''}><span class="dot" aria-hidden="true"></span>Câu ${i + 1}<span class="nav-title">${esc(question.title)}</span></a></li>`).join('');
   const body = `<div class="progress-bar"><label for="progress"><span id="progress-text" role="status">Đã trả lời ${done} / ${questions.length} câu</span></label><progress id="progress" max="${Math.max(1, questions.length)}" value="${done}"></progress></div>
 <div class="layout"><nav aria-label="Danh sách câu hỏi"><ol>${nav}</ol></nav>
-<main id="main" data-round="${esc(quiz.round)}">${heading(quiz, leadOf(quiz))}
+<main id="main" data-round="${esc(quiz.round)}" data-part="">${heading(quiz, leadOf(quiz))}
 ${questions.map((question, i) => card(question, i, questions.length, chats)).join('\n')}
 ${autoSection(quiz, true)}
 ${answeredSection(earlierQuestions(quiz), 'Đã trả lời trước đó', question => question.answer)}
-<section class="send" aria-label="Gửi câu trả lời"><p id="send-help">${missing ? `Còn ${missing} câu cần trả lời trước khi gửi.` : 'Đã đủ để gửi.'}</p><button class="button" id="submit" type="button" aria-describedby="send-help"${missing ? ' disabled' : ''}>Gửi câu trả lời</button><p class="status" id="send-status" role="alert"></p></section>
+<section class="send" aria-label="Gửi câu trả lời"><p class="send-help" id="send-help">${missing ? `Còn ${missing} câu cần trả lời trước khi gửi.` : 'Đã đủ để gửi.'}</p><button class="button submit" id="submit" type="button" aria-describedby="send-help"${missing ? ' disabled' : ''}>Gửi câu trả lời</button><p class="status send-status" id="send-status" role="alert"></p></section>
 </main></div>`;
   return page({ title: 'Câu hỏi về spec', style: 'quiz', script: 'quiz', body });
 }
 
 function quizPage(quiz) {
   const empty = !openQuestions(quiz).length && !list(quiz.auto).length;
+  if (isOpen(quiz) && !empty && quiz.provisional && list(quiz.sections).length) return rolesPage(quiz);
   return isOpen(quiz) && !empty ? openPage(quiz) : closedPage(quiz);
 }
 

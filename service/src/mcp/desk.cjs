@@ -4,7 +4,7 @@ const { scrub } = require('../../channels/private-text.cjs');
 const { DeskError, toPublic } = require('./desk-error.cjs');
 const { validateCall } = require('./tools.cjs');
 const { readMessage } = require('./verify.cjs');
-const { submit, answer, approve } = require('./actions.cjs');
+const { submit, answer, approve, ask } = require('./actions.cjs');
 
 const LIMIT = 20;
 
@@ -18,7 +18,7 @@ async function status(deps, args, now) {
   return {
     projects: candidates.map(({ key }) => ({
       key,
-      specs: rows(overview.specs, key, ['id', 'title', 'state']),
+      specs: rows(overview.specs, key, ['id', 'title', 'state', 'asks']),
       waits: rows(overview.waits, key, ['role', 'subject']),
       jobs: rows(overview.jobs, key, ['kind', 'key', 'state']),
     })),
@@ -43,7 +43,7 @@ async function ack(deps, args, now) {
   return { acked: true };
 }
 
-const TOOLS = { submit, answer, approve, status, pending, ack };
+const TOOLS = { submit, answer, approve, ask, status, pending, ack };
 
 function createDesk({ db, bot, facade, projects, log = () => {}, now = Date.now }) {
   const deps = { db, bot, facade, projects, log };

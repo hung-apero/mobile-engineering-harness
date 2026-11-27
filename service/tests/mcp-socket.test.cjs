@@ -98,17 +98,17 @@ async function connect(server) {
   return client;
 }
 
-test('dz offers exactly six tools that take ids only', async t => {
+test('dz offers exactly seven tools that take ids only', async t => {
   const client = await connect(createDzServer({ call: echo.call }));
   t.after(() => client.close());
   const { tools } = await client.listTools();
-  assert.deepEqual(tools.map(tool => tool.name), ['submit', 'answer', 'approve', 'status', 'pending', 'ack']);
+  assert.deepEqual(tools.map(tool => tool.name), ['submit', 'answer', 'approve', 'ask', 'status', 'pending', 'ack']);
   for (const { inputSchema } of tools) {
     assert.equal(inputSchema.additionalProperties, false);
     assert.ok(Object.keys(inputSchema.properties).every(name => ['message_id', 'channel_id'].includes(name)));
     assert.ok(Object.values(inputSchema.properties).every(value => value.pattern === '^[0-9]{17,20}$'));
   }
-  assert.equal(TOOLS.length, 6);
+  assert.equal(TOOLS.length, 7);
 });
 
 test('dz rejects claims before they reach the service', async t => {

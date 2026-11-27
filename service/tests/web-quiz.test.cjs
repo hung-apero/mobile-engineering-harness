@@ -185,3 +185,35 @@ test('an option label may not break out of its attribute', async t => {
   const web = await startWeb(t, { facade: withQuiz(quizState({ ask })) });
   assert.doesNotMatch((await web.get(`/quiz/${QUIZ}`)).text, /" onclick="x/);
 });
+
+const rolesQuiz = () => quizState({
+  provisional: true, auto: [],
+  ask: [
+    question('T1', { role: 'po', blocking: true, body: 'SDK chỉ trả correct/total' }),
+    question('T2', { role: 'dev', blocking: true, sent: true, draft: { choice: 'A', text: '' } }),
+    question('T3', { role: 'qa', blocking: true, answered: true, answer: { kind: 'po', label: 'A', text: '' } }),
+  ],
+  sections: [{ role: 'po', open: true, count: 1, sent: null }, { role: 'dev', open: false, count: 1, sent: { by: 'dev', at: NOW } }, { role: 'qa', open: false, count: 1, sent: null }],
+});
+
+test('the provisional quiz shows one part per role, only open parts can be answered and sent', async t => {
+  const web = await startWeb(t, { facade: withQuiz(rolesQuiz()) });
+  const { text } = await web.get(`/quiz/${QUIZ}`);
+  for (const role of ['po', 'dev', 'qa']) assert.match(text, new RegExp(`<section id="${role}"`));
+  assert.match(text, /<section id="po"[^>]*data-part="po"/);
+  assert.doesNotMatch(text, /<section id="dev"[^>]*data-part/);
+  assert.match(text, /id="submit-po"/);
+  assert.doesNotMatch(text, /id="submit-dev"|id="submit-qa"/);
+  assert.match(card(text, 'T1'), /SDK chỉ trả correct\/total/);
+  assert.equal(card(text, 'T2'), undefined);
+  assert.match(text, /Đã gửi, đang xử lý/);
+  assert.match(text, /Đã chốt/);
+});
+
+test('sending a part passes its role to the service', async t => {
+  const facade = withQuiz(rolesQuiz());
+  const web = await startWeb(t, { facade });
+  await web.post(api('submit'), { round: 1, role: 'dev' });
+  await web.post(api('submit'), { round: 1, role: 'boss' });
+  assert.deepEqual(facade.of('submit').map(call => [call.args[1], call.args[3]]), [['dev', 'dev'], ['po', undefined]]);
+});

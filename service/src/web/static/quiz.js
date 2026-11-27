@@ -5,13 +5,14 @@ import { startAuto } from './quiz-auto.js';
 const OTHER = 'Khác';
 const api = `/api${location.pathname}`;
 const round = Number(document.getElementById('main').dataset.round);
-const submit = document.getElementById('submit');
-const sendStatus = document.getElementById('send-status');
+const parts = [...document.querySelectorAll('[data-part]')].map(node => ({
+  node, role: node.dataset.part || null, submit: node.querySelector('.submit'), help: node.querySelector('.send-help'), status: node.querySelector('.send-status'), sending: false,
+}));
 const cards = [...document.querySelectorAll('.card')].map(node => ({
   node, qid: node.dataset.qid, blocking: 'blocking' in node.dataset, text: node.querySelector('.other textarea'),
-  saved: node.querySelector('.saved'), dirty: false, saving: null, timer: 0,
+  saved: node.querySelector('.saved'), dirty: false, saving: null, timer: 0, part: parts.find(part => part.node.contains(node)),
 }));
-let sending = false;
+const sending = () => parts.some(part => part.sending);
 let leaving = false;
 
 const choiceOf = card => card.node.querySelector('fieldset input:checked')?.value ?? null;
@@ -26,17 +27,20 @@ function reload() {
 
 function refresh() {
   const done = cards.filter(answered).length;
-  const missing = cards.filter(card => card.blocking && !answered(card));
-  const skipped = cards.length - done - missing.length;
   document.getElementById('progress').value = done;
   document.getElementById('progress-text').textContent = `Đã trả lời ${done} / ${cards.length} câu`;
   for (const card of cards) {
     document.querySelector(`[data-nav="${CSS.escape(card.qid)}"]`)?.classList.toggle('answered', answered(card));
     if (answered(card)) card.node.classList.remove('missing');
   }
-  const ready = skipped ? `Đã đủ để gửi. Còn ${skipped} câu có thể bỏ qua chưa trả lời.` : 'Đã đủ để gửi.';
-  document.getElementById('send-help').textContent = missing.length ? `Còn ${missing.length} câu cần trả lời trước khi gửi.` : ready;
-  submit.disabled = sending || missing.length > 0;
+  for (const part of parts) {
+    const mine = cards.filter(card => card.part === part);
+    const missing = mine.filter(card => card.blocking && !answered(card));
+    const skipped = mine.length - mine.filter(answered).length - missing.length;
+    const ready = skipped ? `Đã đủ để gửi. Còn ${skipped} câu có thể bỏ qua chưa trả lời.` : 'Đã đủ để gửi.';
+    if (part.help) part.help.textContent = missing.length ? `Còn ${missing.length} câu cần trả lời trước khi gửi.` : ready;
+    if (part.submit) part.submit.disabled = part.sending || missing.length > 0;
+  }
 }
 
 async function saveLoop(card) {
@@ -88,22 +92,25 @@ async function flush() {
   return results.every(Boolean) && !busy();
 }
 
-submit.addEventListener('click', async () => {
-  sending = true;
+async function send(part) {
+  part.sending = true;
   refresh();
-  say(sendStatus, 'Đang gửi…');
-  const result = await flush() ? await post(`${api}/submit`, { round }) : { ok: false, error: 'Có câu chưa lưu được. Hãy kiểm tra mạng rồi gửi lại.' };
+  say(part.status, 'Đang gửi…');
+  const body = part.role ? { round, role: part.role } : { round };
+  const result = await flush() ? await post(`${api}/submit`, body) : { ok: false, error: 'Có câu chưa lưu được. Hãy kiểm tra mạng rồi gửi lại.' };
   if (result.ok) {
     scrollTo(0, 0);
     return reload();
   }
-  sending = false;
+  part.sending = false;
   refresh();
-  say(sendStatus, result.error, 'bad');
+  say(part.status, result.error, 'bad');
   const missing = cards.filter(card => result.missing?.includes(card.qid));
   missing.forEach(card => card.node.classList.add('missing'));
   missing[0]?.node.scrollIntoView({ block: 'start' });
-});
+}
+
+parts.filter(part => part.submit).forEach(part => part.submit.addEventListener('click', () => send(part)));
 
 function applyDraft(card, draft) {
   if (!draft || card.dirty || card.saving) return;
@@ -122,7 +129,7 @@ async function sync() {
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) flush();
-  else if (!sending) sync();
+  else if (!sending()) sync();
 });
 addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 addEventListener('beforeunload', event => { if (busy()) event.preventDefault(); });

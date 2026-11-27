@@ -27,18 +27,18 @@ test('an asked question cannot be taken away: a later review without it keeps it
   await s.smoke();
   await s.review();
   assert.equal(Object.values(s.spec().data.prov.items)[0].status, 'open');
-  assert.equal(poWaits(s), 0);
+  assert.equal(poWaits(s), 1);
   await s.gate();
   await s.build();
   await s.state('po-trial');
   assert.deepEqual(open(s), ['T1']);
-  assert.equal(s.waits().some(w => /tạm chọn/.test(w.subject)), true);
+  assert.equal(s.waits().some(w => /câu phần PO/.test(w.subject)), true);
   const { sha } = s.facade.review(s.id);
   const refused = await s.approveTrial(sha);
   assert.deepEqual([refused.ok, /câu tạm chọn/.test(refused.error)], [false, true]);
   assert.equal(answer(s).ok, true);
   await s.tick();
-  assert.deepEqual([open(s), s.waits().some(w => /tạm chọn/.test(w.subject)), s.spec().state], [[], false, 'po-trial']);
+  assert.deepEqual([open(s), s.waits().some(w => /câu phần PO/.test(w.subject)), s.spec().state], [[], false, 'po-trial']);
   assert.deepEqual(await s.approveTrial(sha), { ok: true });
 });
 

@@ -107,6 +107,7 @@ Mỗi project một file `~/.dev-zone/projects/<KEY>.yaml`. Mẫu: `projects/exa
 | `dz spec build <id> --version <v>` | bắt đầu code spec đã duyệt cho bản `<v>`; bình thường không cần: PO duyệt xong dịch vụ tự code cho bản minor kế tiếp của app (`versionName` trong `app/build.gradle(.kts)` của nhánh gốc, 1.9.2 → 1.10.0, bỏ qua bản đã đóng); không đọc được version thì gọi dev và chờ lệnh này |
 | `dz spec prereq <id> [--pr [owner/repo#]N] [--branch owner/repo:nhánh] [--clear]` | đặt điều kiện trước (PR đã merge, nhánh đã có); không cờ thì xem điều kiện và gợi ý đọc từ spec (gợi ý không tự áp dụng) |
 | `dz spec retry <id> [--figma URL\|none]` | chạy lại spec đang gác hoặc cần bổ sung |
+| `dz spec ask <id>` | gửi ngay quiz câu phát sinh khi code (chia phần PO / Dev / QA, mỗi phần một việc chờ kèm link `#po`, `#dev`, `#qa`); bình thường quiz tự gửi khi build xong và cùng bản cài |
 | `dz spec cancel <id>` | huỷ spec: đóng mọi chờ, gác việc đang chạy của spec, máy bỏ qua spec này (mã `OP01`); gọi lại không ghi thêm |
 | `dz release status <KEY> <version>` | 6 điều kiện release, đóng bản, E2E, bug đã hoãn |
 | `dz release defer <KEY> <version> <TICKET…> --by <tên>` | hoãn bug Medium/Low đang mở của bản khỏi điều kiện 4 |

@@ -52,7 +52,7 @@ async function poTrial(run) {
     finishTrial(run);
     return true;
   }
-  if (openItems(run.spec).length) openRound(run);
+  if (openItems(run.spec).length) openRound(run, `trial-${trial.sha.slice(0, 12)}`);
   const count = trialNotes(run.spec).length;
   openOnce(run, `trial-${trial.sha.slice(0, 12)}`, 'po', `Thử bản cài ${nameOf(run.spec)}, commit ${trial.sha.slice(0, 12)}${count ? ` (${count} điểm cần lưu ý ở đầu trang)` : ''}`, () => linkFor(run.ctx, run.spec.id, 'review', run.now));
   return false;

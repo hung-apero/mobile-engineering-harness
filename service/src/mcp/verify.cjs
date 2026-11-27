@@ -70,10 +70,24 @@ function isPo(project, member, authorId) {
   return [project.people.po, project.people.poBackup].includes(authorId);
 }
 
-async function requirePo({ bot }, { guildId, authorId }, project) {
+async function memberOf({ bot }, { guildId, authorId }) {
   const member = await readOrRefuse(() => bot.member(guildId, authorId), 'Người gửi không còn trong server.');
   if (member?.user?.id !== authorId || member.user.bot || !Array.isArray(member.roles)) throw refuse('Không xác minh được người gửi.');
-  if (!isPo(project, member, authorId)) throw refuse(`Người gửi không phải PO của ${project.key}.`);
+  return member;
 }
 
-module.exports = { readMessage, readPlace, requirePo, MAX_AGE_MS };
+async function requirePo(deps, message, project) {
+  if (!isPo(project, await memberOf(deps, message), message.authorId)) throw refuse(`Người gửi không phải PO của ${project.key}.`);
+}
+
+function inTeam(project, member, authorId) {
+  if (isPo(project, member, authorId)) return true;
+  if (Object.values(project.roles ?? {}).some(role => member.roles.includes(role))) return true;
+  return Object.values(project.people ?? {}).includes(authorId);
+}
+
+async function requireTeam(deps, message, project) {
+  if (!inTeam(project, await memberOf(deps, message), message.authorId)) throw refuse(`Người gửi không thuộc nhóm PO, dev, QA của ${project.key}.`);
+}
+
+module.exports = { readMessage, readPlace, requirePo, requireTeam, MAX_AGE_MS };

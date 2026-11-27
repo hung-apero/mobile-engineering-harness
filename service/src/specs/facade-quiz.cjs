@@ -4,7 +4,7 @@ const { missingOf, leave } = require('./phase-quiz.cjs');
 const { enqueue, currentChats, MAX_CHATS } = require('./chats.cjs');
 const { createRun, submission, closeWaits } = require('./kit.cjs');
 const { OTHER } = require('../web/quiz-model.cjs');
-const { isProvisional, provisionalQuiz, submitProvisional, canEdit } = require('./facade-provisional.cjs');
+const { isProvisional, provisionalQuiz, submitProvisional, canEdit, roleIn } = require('./facade-provisional.cjs');
 const { provOf } = require('./provisional.cjs');
 const { wrongState, invalid } = require('./facade-error.cjs');
 
@@ -51,13 +51,15 @@ function save(ctx, spec, questions, input, by, now) {
   return store.saveDraft(ctx.db, { specId: spec.id, round: roundOf(spec), by, ...draftOf(question, input) }, now);
 }
 
-const saveDraft = (ctx, spec, input, by, now) => save(ctx, spec, asksOf(ctx, spec).filter(q => !q.answered), input, by, now);
+const editableAsks = (ctx, spec) => asksOf(ctx, spec).filter(q => !q.answered && !q.sent && (!isProvisional(spec) || canEdit(ctx.db, spec, q.role)));
+const saveDraft = (ctx, spec, input, by, now) => save(ctx, spec, editableAsks(ctx, spec), input, by, now);
 const changeAuto = (ctx, spec, input, by, now) => save(ctx, spec, isProvisional(spec) ? [] : view(ctx.db, spec).auto, input, by, now);
 
-function submit(ctx, project, spec, by, now) {
+function submit(ctx, project, spec, by, now, role) {
   if (isProvisional(spec)) {
-    if (!canEdit(ctx.db, spec)) throw wrongState();
-    return submitProvisional(ctx, spec, by, now);
+    const part = roleIn(role, roleIn(by));
+    if (!canEdit(ctx.db, spec, part)) throw wrongState();
+    return submitProvisional(ctx, spec, part, by, now);
   }
   if (spec.state !== 'quiz' || submission(ctx.db, spec.id, spec.round)) throw wrongState();
   const run = createRun(ctx, project, spec, now);

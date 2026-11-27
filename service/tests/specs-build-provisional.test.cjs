@@ -85,8 +85,9 @@ test('questions of every review wait and are asked together with the install', a
   assert.equal(s.spec().state, 'building');
   await s.code({ files: { 'feature.txt': 'v2\n' } });
   await s.smoke();
+  assert.match(s.waits().find(w => w.role === 'po').link, /\/quiz\/.+#po$/);
   await s.review({ ...REVIEW_OK, needsPo: ['Màn trống hiện gì?'] });
-  assert.equal(s.waits().filter(w => w.role === 'po').length, 0);
+  assert.equal(s.waits().filter(w => w.role === 'po').length, 1);
   await toTrial(s);
   const quiz = s.facade.quiz(s.id);
   assert.equal(quiz.round, 2);
@@ -103,4 +104,70 @@ test('the PO can ask more about a reviewer question', async t => {
   const [job] = s.running('explain');
   assert.equal(job.payload.question.title, ASK);
   assert.throws(() => s.facade.ask(s.id, 'Q1', 'x', 'po', s.now), { code: 'INVALID' });
+});
+
+const DEV_ASK = { role: 'dev', question: 'Bật mẫu cứng cả bản release?', context: 'useLocalSampleSource = true', now: 'Bật cho mọi bản', options: ['Chỉ bản debug'], recommend: 'B', why: 'Tránh dữ liệu mẫu lên store', same: '' };
+const PO_ASK = { role: 'po', question: 'Accuracy dùng tỉ lệ câu đạt?', context: 'SDK chỉ trả correct/total', now: 'Tỉ lệ câu đạt', options: ['Chờ SDK có điểm'], recommend: 'A', why: 'Làm được ngay', same: '' };
+
+async function askedByRole(t) {
+  const s = setupBuild(t);
+  await s.toBuilding();
+  await s.code();
+  await s.smoke();
+  await s.review({ ...REVIEW_OK, verdict: 'changes', needsPo: [DEV_ASK, PO_ASK], findings: [{ file: 'feature.txt', line: 1, severity: 'major', text: 'thiếu màn trống' }] });
+  await s.code({ files: { 'feature.txt': 'v2\n' } });
+  return s;
+}
+
+test('questions are split by role, sent once the build is done, each part with its own link', async t => {
+  const s = await askedByRole(t);
+  const waits = s.waits().filter(w => /câu phần/.test(w.subject));
+  assert.deepEqual(waits.map(w => [w.role, w.link.split('#')[1]]).sort(), [['dev', 'dev'], ['po', 'po']]);
+  const quiz = s.facade.quiz(s.id);
+  assert.deepEqual(quiz.sections.map(part => [part.role, part.open, part.count]), [['po', true, 1], ['dev', true, 1]]);
+  const dev = quiz.ask.find(q => q.role === 'dev');
+  assert.deepEqual([dev.body, dev.options.map(o => o.text), dev.proposal.label], ['useLocalSampleSource = true', ['Bật cho mọi bản', 'Chỉ bản debug'], 'B']);
+});
+
+test('each role sends its own part and only that part is settled', async t => {
+  const s = await askedByRole(t);
+  const dev = s.facade.quiz(s.id).ask.find(q => q.role === 'dev');
+  const po = s.facade.quiz(s.id).ask.find(q => q.role === 'po');
+  assert.deepEqual(s.facade.submit(s.id, 'dev', s.now, 'dev'), { ok: false, missing: [dev.id] });
+  s.facade.saveDraft(s.id, { qid: dev.id, choice: 'A', text: '' }, 'dev', s.now);
+  assert.equal(s.facade.submit(s.id, 'dev', s.now, 'dev').ok, true);
+  assert.throws(() => s.facade.saveDraft(s.id, { qid: dev.id, choice: 'B', text: '' }, 'dev', s.now), { code: 'INVALID' });
+  await s.tick();
+  const items = Object.values(s.spec().data.prov.items);
+  assert.deepEqual(items.map(item => [item.role, item.status]).sort(), [['dev', 'confirmed'], ['po', 'open']]);
+  assert.deepEqual(s.waits().filter(w => /câu phần/.test(w.subject)).map(w => w.role), ['po']);
+  assert.equal(s.facade.quiz(s.id).sections.find(part => part.role === 'po').open, true);
+  assert.equal(po.role, 'po');
+});
+
+test('a reviewer question marked same as an open one updates it instead of asking again', async t => {
+  const s = await askedByRole(t);
+  await s.smoke();
+  await s.review({ ...REVIEW_OK, needsPo: [{ ...DEV_ASK, question: 'Mẫu cứng có lên store không?', same: 'T1' }] });
+  const items = Object.values(s.spec().data.prov.items);
+  assert.equal(items.length, 2);
+  assert.equal(items.find(item => item.qid === 'T1').title, 'Mẫu cứng có lên store không?');
+});
+
+test('dz spec ask sends the open questions at once with a new reminder per role', async t => {
+  const s = await askedByRole(t);
+  const before = s.waits().filter(w => /câu phần/.test(w.subject)).map(w => w.link);
+  s.now += 60000;
+  const [line] = await s.cmd('ask', String(s.id));
+  assert.match(line, /Đã gửi 2 câu chờ chốt của spec #\d+: PO 1 · Dev 1/);
+  const after = s.waits().filter(w => /câu phần/.test(w.subject));
+  assert.deepEqual(after.map(w => w.role).sort(), ['dev', 'po']);
+  assert.equal(after.some(w => before.includes(w.link)), false);
+  assert.deepEqual(s.facade.overview(s.now).specs.find(spec => spec.id === s.id).asks, { po: 1, dev: 1, qa: 0 });
+});
+
+test('dz spec ask refuses a spec with nothing to ask', async t => {
+  const s = setupBuild(t);
+  await s.toBuilding();
+  await assert.rejects(async () => s.cmd('ask', String(s.id)), /không còn câu nào chờ chốt/);
 });

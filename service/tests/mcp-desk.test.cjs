@@ -136,7 +136,7 @@ test('status is read only, shows only the projects of the channel and no links',
     return data;
   };
   const { result } = await s.call('status', s.discord.post('tới đâu rồi'));
-  assert.deepEqual(result, { projects: [{ key: 'AAP864', specs: [{ id: 1, title: 'S1', state: 'review' }], waits: [], jobs: [] }] });
+  assert.deepEqual(result, { projects: [{ key: 'AAP864', specs: [{ id: 1, title: 'S1', state: 'review', asks: null }], waits: [], jobs: [] }] });
   assert.deepEqual(s.facade.names(), []);
   assert.ok(s.discord.calls.every(c => c.method === 'GET'));
   assert.equal((await s.call('status', idAt(NOW - MIN), '900000000000000099')).error.code, 'REFUSED');

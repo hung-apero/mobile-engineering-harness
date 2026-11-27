@@ -2,27 +2,28 @@ const inbox = require('../inbox.cjs');
 const { discordLive } = require('../discord-live.cjs');
 const { firstLine } = require('../redact.cjs');
 const { DeskError, isDefinite } = require('./desk-error.cjs');
-const { readMessage, requirePo } = require('./verify.cjs');
+const { readMessage, requirePo, requireTeam } = require('./verify.cjs');
 const { pickProject, checkPost, pickSpec } = require('./pick.cjs');
 const { readApproval } = require('./approval-text.cjs');
 const { readAnswers } = require('./answer-text.cjs');
 const { readSpec } = require('./spec-text.cjs');
 
 const byOf = message => `discord:${message.authorId}`;
+const list = value => (Array.isArray(value) ? value : []);
 
 function checkUnused(db, messageId) {
   const row = inbox.rowOf(db, messageId);
   if (row?.action) throw new DeskError('USED', `Tin này đã được dùng (${row.action}${row.outcome ? `: ${row.outcome}` : ', không rõ kết quả'}).`);
 }
 
-async function open(deps, args, now, { kind = null, allowEdited = true } = {}) {
+async function open(deps, args, now, { kind = null, allowEdited = true, check = requirePo } = {}) {
   checkUnused(deps.db, args.message_id);
   const message = await readMessage(deps, args, now, { allowEdited });
   if (inbox.record(deps.db, message.raw, message.channelId, now).channelId !== message.channelId) throw new DeskError('REFUSED', 'Tin đã ghi ở kênh khác.');
   const post = kind && message.replyTo ? inbox.postOf(deps.db, message.replyTo) : null;
   if (kind) checkPost(post, kind, message);
   const project = pickProject(message, post, deps.projects());
-  await requirePo(deps, message, project);
+  await check(deps, message, project);
   return { message, post, project };
 }
 
@@ -115,4 +116,20 @@ async function approve(deps, args, now) {
   return { project: project.key, specId, ...result };
 }
 
-module.exports = { submit, answer, approve };
+const SPEC_NO = /(?:#|spec\s*)(\d{1,9})(?!\d)/iu;
+
+async function ask(deps, args, now) {
+  const found = await open(deps, args, now, { check: requireTeam });
+  const { message, project } = found;
+  const specs = list((await deps.facade.overview(now))?.specs).filter(spec => spec.project === project.key && spec.asks);
+  const wanted = SPEC_NO.exec(message.text)?.[1];
+  const spec = wanted ? specs.find(item => item.id === Number(wanted)) : specs.length === 1 ? specs[0] : null;
+  if (!spec && wanted) throw new DeskError('STATE', `Spec ${wanted} của ${project.key} không có câu nào chờ chốt.`);
+  if (!spec) throw new DeskError(specs.length ? 'CHOOSE' : 'STATE', specs.length ? `Có ${specs.length} spec đang có câu chờ chốt (${specs.map(item => `#${item.id}`).join(', ')}). Hãy ghi rõ spec nào.` : `${project.key} không có spec nào có câu chờ chốt.`);
+  const sent = await deps.facade.askNow(spec.id, now);
+  if (!sent?.ok) throw new DeskError('STATE', sent?.error ? firstLine(sent.error) : 'Chưa gửi được câu hỏi.');
+  await confirm(deps, found, `${sent.line}. Mỗi người nhận link tới đúng phần của mình.`);
+  return { project: project.key, specId: spec.id, outcome: sent.line };
+}
+
+module.exports = { submit, answer, approve, ask };

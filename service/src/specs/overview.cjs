@@ -4,6 +4,8 @@ const bugs = require('../bugs/store.cjs');
 const { loadProjects } = require('../projects.cjs');
 const { loadQuota } = require('../quota.cjs');
 const { intakeState } = require('../intake-state.cjs');
+const { isBuilding } = require('./build-kit.cjs');
+const { countsOf, openItems } = require('./provisional.cjs');
 const { projectLine, serviceLine, intakeLine, quotaLine, attempt } = require('../status.cjs');
 
 const OPEN_JOBS = ['queued', 'starting', 'running', 'parked'];
@@ -27,7 +29,7 @@ function overview(ctx, now) {
     jobs: jobs.listJobs(ctx.db, { states: OPEN_JOBS }).map(({ project, kind, key, state: at, attempt: count, parkReason }) => ({ project, kind, key, state: at, attempt: count, reason: at === 'parked' ? parkReason : null })),
     batches: active.flatMap(({ key }) => bugs.listBatches(ctx.db, { project: key, states: ['open', 'running'] })).map(({ project, version, kind, state: at, keys }) => ({ project, version, kind, state: at, keys })),
     versions: active.flatMap(({ key }) => bugs.listVersions(ctx.db, key)).filter(item => item.state !== 'closed').map(({ project, version, branch }) => ({ project, version, branch })),
-    specs: store.listSpecs(ctx.db).slice(-MAX_SPECS).reverse().map(({ id, project, title, state: at, updatedAt }) => ({ id, project, title, state: at, updatedAt, link: links.get(id) ?? null })),
+    specs: store.listSpecs(ctx.db).slice(-MAX_SPECS).reverse().map(spec => ({ id: spec.id, project: spec.project, title: spec.title, state: spec.state, updatedAt: spec.updatedAt, link: links.get(spec.id) ?? null, asks: isBuilding(spec) && openItems(spec).length ? countsOf(spec) : null })),
     waits: ctx.db.prepare("SELECT project, role, subject, link, opened_at AS openedAt FROM waits WHERE state = 'open' ORDER BY id").all(),
   };
 }
