@@ -46,6 +46,8 @@ cd company-ai-knowledge-hub
 
 Khởi động lại Claude Code, `/mcp` phải thấy `knowledge-hub`. Kiểm nhanh: `kh search "rewarded ad mở khoá bài" --scope learn`, `kh read learn/ads/ad-09`.
 
+Nối repo app vào hub bằng hook Claude Code: `kh install-hook <repo-app> --scope learn` (ghi `.claude/settings.json`, idempotent). SessionStart bơm nguyên lý + chủ đề; UserPromptSubmit gọi `mcp_tool` `knowledge-hub.hook_context` bơm luật khớp prompt; Stop queue phiên có commit fix / ticket cho `kh capture` (tạo PR đề xuất luật). Máy chưa cài `kh` thì hook tự bỏ qua.
+
 ### Tool
 
 | Tool | Dùng khi |
