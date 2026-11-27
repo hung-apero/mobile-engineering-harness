@@ -25,7 +25,7 @@ const FEATURE_REVIEW_SCHEMA = object({
   needsPo: list(object({
     role: { type: 'string', enum: ROLES }, question: string, context: blank, now: blank,
     options: { type: 'array', items: string, maxItems: 2 }, recommend: { type: 'string', enum: LABELS }, why: blank,
-    same: { type: 'string', pattern: '^(T[0-9]+)?$' },
+    same: { type: 'string', pattern: '^(T[0-9]+(,T[0-9]+)*)?$' },
   })),
   forbidden: list(string),
   findings: list(object({ file: string, line: { type: 'integer', minimum: 0 }, severity: { type: 'string', enum: SEVERITIES }, text: string })),
@@ -57,7 +57,8 @@ function featureReviewPrompt(payload, options) {
     '   role: po (hành vi, phạm vi, nội dung sản phẩm), dev (kỹ thuật, SDK, cờ build, kiến trúc), qa (cách kiểm, dữ liệu hay thiết bị test); không chắc thì po.',
     '   question: câu hỏi ngắn; context: bối cảnh để người chưa đọc code hiểu; now: code đang làm gì (thành lựa chọn A);',
     '   options: 1-2 hướng khác (thành B, C); recommend: A, B hoặc C; why: lý do đề xuất.',
-    '   same: mã câu đang mở trong khối asked nếu trùng ý (vd T5) để cập nhật câu đó thay vì hỏi lại; không trùng thì để rỗng.',
+    '   same: mã các câu đang mở trong khối asked cùng ý với câu này, cách nhau dấu phẩy (vd T4,T9); câu đầu được viết lại, các câu sau được gộp vào. Không trùng thì để rỗng.',
+    '   Mọi câu trong asked vẫn còn cần chốt thì trả lại đủ trường như trên kèm same, để câu cũ có bối cảnh và hướng chọn; câu trong asked đã rõ nhờ code hay spec thì bỏ qua.',
     '4. Thay đổi bị cấm ghi vào forbidden: quyền Android, khoá ký, CI, gradle wrapper, bí mật, tắt test hoặc lint, giao dịch tiền hay xoá dữ liệu người dùng ngoài spec.',
     '5. Lỗi khác ghi vào findings {file, line, severity, text}; line là dòng ở bản mới, không rõ thì 0. blocker và major là lỗi phải sửa.',
     'verdict là changes khi có lỗi phải sửa, approve khi không. Mỗi chuỗi dưới 1000 ký tự, viết tiếng Việt.',
@@ -80,7 +81,7 @@ function readAsk(value) {
   const loose = name => (typeof value[name] === 'string' && value[name].trim() ? textOf(value[name], `needsPo: ${name}`) : '');
   const options = requireList(value.options ?? [], 'needsPo: options').slice(0, 2).map(text => textOf(text, 'needsPo: options'));
   const recommend = LABELS.slice(0, options.length + 1).includes(value.recommend) ? value.recommend : 'A';
-  const same = /^T[0-9]+$/.test(value.same ?? '') ? value.same : '';
+  const same = /^T[0-9]+(,T[0-9]+)*$/.test(value.same ?? '') ? value.same : '';
   return { role: oneOf(value.role ?? 'po', ROLES, 'needsPo: role'), question: textOf(value.question, 'needsPo: question'), context: loose('context'), now: loose('now'), options, recommend, why: loose('why'), same };
 }
 

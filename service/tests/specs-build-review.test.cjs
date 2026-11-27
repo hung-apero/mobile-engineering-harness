@@ -100,8 +100,8 @@ test('the review worker only reads', async t => {
 
 test('needsPo takes structured questions with a role and still reads plain strings', () => {
   const base = { verdict: 'approve', specMatch: true, forbidden: [], findings: [] };
-  const ask = { role: 'qa', question: 'Test trên máy nào?', context: '', now: 'Pixel 6', options: ['Máy Android 10'], recommend: 'C', why: '', same: 'T2' };
+  const ask = { role: 'qa', question: 'Test trên máy nào?', context: '', now: 'Pixel 6', options: ['Máy Android 10'], recommend: 'C', why: '', same: 'T2,T5' };
   const parsed = parseFeatureReview({ ...base, needsPo: [ask, 'Nút ở đâu?'] });
-  assert.deepEqual(parsed.needsPo.map(q => [q.role, q.question, q.recommend, q.same]), [['qa', 'Test trên máy nào?', 'A', 'T2'], ['po', 'Nút ở đâu?', 'A', '']]);
+  assert.deepEqual(parsed.needsPo.map(q => [q.role, q.question, q.recommend, q.same]), [['qa', 'Test trên máy nào?', 'A', 'T2,T5'], ['po', 'Nút ở đâu?', 'A', '']]);
   assert.equal(parseFeatureReview({ ...base, needsPo: [{ ...ask, role: 'pm' }] }).ok, false);
 });

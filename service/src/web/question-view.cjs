@@ -60,7 +60,7 @@ function card(question, index, total, chats) {
   return `<article class="card" id="q-${esc(question.id)}" data-qid="${esc(question.id)}"${question.blocking ? ' data-blocking' : ''}>
 <header><p class="eyebrow">Câu ${index + 1} / ${total} ${question.blocking ? tag('must', 'Cần trả lời') : tag('plain', 'Có thể bỏ qua')}</p><p class="saved" role="status"></p></header>
 <h2>${inline(question.title)}</h2>
-<p class="why"><strong>Vì sao hỏi:</strong> ${inline(reasonOf(question))}</p>
+${question.hideWhy ? '' : `<p class="why"><strong>Vì sao hỏi:</strong> ${inline(reasonOf(question))}</p>`}
 ${question.body ? `<div class="prose">${renderMarkdown(question.body, { base: 3 })}</div>` : ''}
 ${choices(question, question.draft)}
 ${chatBox(question, chats)}

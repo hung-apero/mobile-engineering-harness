@@ -126,7 +126,7 @@ test('questions are split by role, sent once the build is done, each part with i
   const quiz = s.facade.quiz(s.id);
   assert.deepEqual(quiz.sections.map(part => [part.role, part.open, part.count]), [['po', true, 1], ['dev', true, 1]]);
   const dev = quiz.ask.find(q => q.role === 'dev');
-  assert.deepEqual([dev.body, dev.options.map(o => o.text), dev.proposal.label], ['useLocalSampleSource = true', ['Bật cho mọi bản', 'Chỉ bản debug'], 'B']);
+  assert.deepEqual([dev.body, dev.options.map(o => o.text), dev.proposal.label], ['useLocalSampleSource = true', ['Giữ như code đang làm: Bật cho mọi bản', 'Chỉ bản debug'], 'B']);
 });
 
 test('each role sends its own part and only that part is settled', async t => {
@@ -170,4 +170,14 @@ test('dz spec ask refuses a spec with nothing to ask', async t => {
   const s = setupBuild(t);
   await s.toBuilding();
   await assert.rejects(async () => s.cmd('ask', String(s.id)), /không còn câu nào chờ chốt/);
+});
+
+test('a reviewer question naming several open ones rewrites the first and merges the rest', async t => {
+  const s = await askedByRole(t);
+  await s.smoke();
+  await s.review({ ...REVIEW_OK, needsPo: [{ ...PO_ASK, question: 'Accuracy Speaking tính thế nào?', options: ['Chờ SDK', 'Ẩn ô Accuracy'], same: 'T2,T1' }] });
+  const items = Object.fromEntries(Object.values(s.spec().data.prov.items).map(item => [item.qid, item]));
+  assert.deepEqual([items.T2.status, items.T2.title, items.T2.options.length], ['open', 'Accuracy Speaking tính thế nào?', 3]);
+  assert.deepEqual([items.T1.status, items.T1.into], ['merged', 'T2']);
+  assert.deepEqual(s.facade.quiz(s.id).ask.map(q => q.id), ['T2']);
 });

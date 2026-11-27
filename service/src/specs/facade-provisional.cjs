@@ -7,13 +7,13 @@ const { chosen } = require('../web/quiz-model.cjs');
 
 const isProvisional = spec => isBuilding(spec) && provOf(spec).round !== null;
 const roleIn = (role, fallback = 'po') => (ROLES.includes(role) ? role : fallback);
+const GENERIC = new Set(['Người kiểm code thấy điểm cần PO chốt', 'Lượt code gặp điểm cần PO chốt, agent tạm chọn để làm tiếp', 'Người kiểm code thấy điểm cần chốt', 'Lượt code gặp điểm cần chốt, agent tạm chọn để làm tiếp']);
 
 function questionOf(item) {
   return {
     id: item.qid, role: roleOf(item), title: item.title, body: item.body ?? '', blocking: true,
     options: item.options.map(({ label, text }) => ({ label, text })), current: item.picked,
-    proposal: { label: item.recommend ?? item.picked, reason: item.why || 'Đang tạm làm theo lựa chọn này' },
-    reason: 'Câu này phát sinh khi code. Code đang làm theo lựa chọn A; chọn A để giữ, chọn khác thì code sẽ được sửa.',
+    proposal: { label: item.recommend ?? item.picked, reason: GENERIC.has(item.why) ? '' : item.why ?? '' }, hideWhy: true,
   };
 }
 
@@ -21,7 +21,7 @@ function view(db, spec) {
   const prov = provOf(spec);
   const drafts = draftsOf(db, spec, prov.round);
   const asked = new Set(prov.asked);
-  return Object.values(prov.items).filter(item => item.said || asked.has(item.qid)).map(item => {
+  return Object.values(prov.items).filter(item => item.status !== 'merged' && (item.said || asked.has(item.qid))).map(item => {
     const sent = sentIds(prov, roleOf(item)).has(item.qid);
     return {
       ...questionOf(item), draft: drafts.get(item.qid) ?? null, answered: item.status !== 'open', sent,

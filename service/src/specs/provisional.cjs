@@ -28,9 +28,12 @@ function merge(prov, found) {
   const items = { ...prov.items };
   let { next } = prov;
   for (const { same, ...item } of found) {
-    const old = same && Object.values(items).find(known => known.qid === same && known.status === 'open');
-    if (old) {
-      items[old.key] = { ...old, ...Object.fromEntries(UPDATABLE.map(name => [name, item[name]])) };
+    const ids = String(same ?? '').split(',').filter(Boolean);
+    const olds = ids.map(qid => Object.values(items).find(known => known.qid === qid && known.status === 'open')).filter(Boolean);
+    if (olds.length) {
+      const [keep, ...rest] = olds;
+      items[keep.key] = { ...keep, ...Object.fromEntries(UPDATABLE.map(name => [name, item[name]])) };
+      for (const old of rest) items[old.key] = { ...old, status: 'merged', into: keep.qid };
       continue;
     }
     if (items[item.key]) continue;
@@ -69,11 +72,11 @@ const askOf = value => (typeof value === 'string' ? { role: 'po', question: valu
 
 function itemOf(value, kind) {
   const ask = askOf(value);
-  const options = [ask.now || kind.option, ...(ask.options ?? []).slice(0, 2)].map((option, i) => ({ label: LABELS[i], text: text(option), value: LABELS[i] }));
+  const options = [ask.now ? `Giữ như code đang làm: ${ask.now}` : kind.option, ...(ask.options ?? []).slice(0, 2)].map((option, i) => ({ label: LABELS[i], text: text(option), value: LABELS[i] }));
   const recommend = options.some(option => option.label === ask.recommend) ? ask.recommend : 'A';
   return {
     key: keyOf(kind.prefix, ask.question), role: ROLES.includes(ask.role) ? ask.role : 'po', title: text(ask.question), body: text(ask.context),
-    options, value: 'A', recommend, why: text(ask.why) || kind.why, hard: HARD.test(ask.question), same: ask.same ?? '',
+    options, value: 'A', recommend, why: text(ask.why), hard: HARD.test(ask.question), same: ask.same ?? '',
   };
 }
 

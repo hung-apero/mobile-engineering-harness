@@ -189,7 +189,7 @@ test('an option label may not break out of its attribute', async t => {
 const rolesQuiz = () => quizState({
   provisional: true, auto: [],
   ask: [
-    question('T1', { role: 'po', blocking: true, body: 'SDK chỉ trả correct/total' }),
+    question('T1', { role: 'po', blocking: true, body: 'SDK chỉ trả correct/total', hideWhy: true }),
     question('T2', { role: 'dev', blocking: true, sent: true, draft: { choice: 'A', text: '' } }),
     question('T3', { role: 'qa', blocking: true, answered: true, answer: { kind: 'po', label: 'A', text: '' } }),
   ],
@@ -205,6 +205,7 @@ test('the provisional quiz shows one part per role, only open parts can be answe
   assert.match(text, /id="submit-po"/);
   assert.doesNotMatch(text, /id="submit-dev"|id="submit-qa"/);
   assert.match(card(text, 'T1'), /SDK chỉ trả correct\/total/);
+  assert.doesNotMatch(card(text, 'T1'), /Vì sao hỏi/);
   assert.equal(card(text, 'T2'), undefined);
   assert.match(text, /Đã gửi, đang xử lý/);
   assert.match(text, /Đã chốt/);
