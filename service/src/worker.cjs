@@ -10,7 +10,7 @@ const KILL_WINDOW_MS = 2000;
 const PERMISSION_MODES = ['default', 'acceptEdits', 'dontAsk'];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-function workerArgs({ prompt, sessionId, resume, model, tools, allowedTools, disallowedTools, mcpConfig, pluginDirs, jsonSchema, permissionMode }) {
+function workerArgs({ prompt, sessionId, resume, model, tools, allowedTools, disallowedTools, mcpConfig, extraMcp, pluginDirs, jsonSchema, permissionMode }) {
   if (permissionMode !== undefined && !PERMISSION_MODES.includes(permissionMode)) throw new Error(`permissionMode không được phép: ${permissionMode}`);
   const args = ['-p', '--output-format', 'stream-json', '--verbose', '--strict-mcp-config', '--setting-sources', 'project'];
   if (model) args.push('--model', model);
@@ -19,7 +19,8 @@ function workerArgs({ prompt, sessionId, resume, model, tools, allowedTools, dis
   if (tools) args.push('--tools', tools.join(','));
   if (allowedTools && allowedTools.length) args.push('--allowedTools', ...allowedTools);
   if (disallowedTools && disallowedTools.length) args.push('--disallowedTools', ...disallowedTools);
-  if (mcpConfig) args.push('--mcp-config', mcpConfig);
+  const mcpConfigs = [mcpConfig, ...(extraMcp || [])].filter(Boolean);
+  if (mcpConfigs.length) args.push('--mcp-config', ...mcpConfigs);
   if (permissionMode) args.push('--permission-mode', permissionMode);
   if (jsonSchema) args.push('--json-schema', typeof jsonSchema === 'string' ? jsonSchema : JSON.stringify(jsonSchema));
   for (const dir of pluginDirs || []) args.push('--plugin-dir', dir);

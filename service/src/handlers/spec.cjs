@@ -6,6 +6,7 @@ const { featureReviewPrompt, FEATURE_REVIEW_SCHEMA } = require('../specs/feature
 const { isolatedEnv, IDENTITY, NO_PUSH } = require('../bugs/prompts-env.cjs');
 const { checkWorkDir } = require('../bugs/prompts-data.cjs');
 const { DENIED_COMMANDS, DENIED_TOOLS } = require('./bug.cjs');
+const { kbAccess } = require('../knowledge-hub.cjs');
 
 const ALLOWED = ['Bash', 'Read', 'Edit', 'Write', 'Glob', 'Grep', 'Agent', 'Skill', 'SendMessage', 'TaskCreate', 'TaskUpdate', 'TaskList', 'TaskGet', 'TaskStop', 'Monitor'];
 const COMMANDS = [...DENIED_COMMANDS.filter(command => !command.startsWith('git push')), 'git push', 'xdg-open'];
@@ -38,20 +39,22 @@ function prepareReview(job, { dzHome, project }) {
 }
 
 function prepare(job, options) {
-  const { dzHome, project } = options;
+  const { dzHome, project, searchPath } = options;
   const { payload } = job;
   if (payload.type === 'review') return prepareReview(job, options);
   const prompt = specPrompt(job);
   const building = payload.segment === 'build';
   const denied = building ? [...COMMANDS, ...EMULATOR] : COMMANDS;
+  const kb = kbAccess(searchPath);
   return {
     prompt,
     resumePrompt: prompt,
     cwd: checkWorkDir(payload.repo, 'repo', { dzHome, project }),
     model: 'sonnet',
-    allowedTools: [...ALLOWED, ...(payload.figma ? FIGMA_TOOLS : [])],
-    disallowedTools: ['AskUserQuestion', ...denied.map(command => `Bash(${command}:*)`), ...(building ? OTHER_ADB : []), ...DENIED_TOOLS, `Read(/${dzHome}/secrets/**)`],
+    allowedTools: [...ALLOWED, ...(payload.figma ? FIGMA_TOOLS : []), ...kb.allowed],
+    disallowedTools: ['AskUserQuestion', ...denied.map(command => `Bash(${command}:*)`), ...(building ? OTHER_ADB : []), ...DENIED_TOOLS, ...kb.denied, `Read(/${dzHome}/secrets/**)`],
     mcpConfig: payload.figma ? figmaReadConfig(dzHome) : undefined,
+    extraMcp: kb.mcp,
     pluginDirs: [],
     env: { ...isolatedEnv(dzHome, { config: NO_PUSH }), ...IDENTITY, HARNESS_HEADLESS: '1' },
   };

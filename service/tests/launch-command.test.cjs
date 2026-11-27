@@ -156,6 +156,7 @@ test('an agent job gets env overrides, json schema, permission mode and its own 
   assert.equal(args[args.indexOf('--permission-mode') + 1], 'dontAsk');
   assert.equal(env.GH_CONFIG_DIR, '/empty');
   assert.deepEqual([seen[0].dzHome, seen[0].project.key, seen[0].deps], [h.dzHome, 'ABC1', { git: 'fake' }]);
+  assert.equal(seen[0].searchPath, ctx.env.PATH);
   fs.appendFileSync(ctx.deps.logFileFor(job(ctx, id)), `${JSON.stringify({ type: 'assistant' })}\n`);
   alive.clear();
   await tick(ctx, NOW + 10000);

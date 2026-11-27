@@ -5,6 +5,7 @@ const { checkWorkDir, bad, dataBlock } = require('../bugs/prompts-data.cjs');
 const { writeAdbWrapper, SERIAL } = require('../devices.cjs');
 const { checkLock } = require('./spec.cjs');
 const { UIDIFF_SCHEMA, PASS_SCORE, SLUG } = require('../specs/uidiff-result.cjs');
+const { kbAccess } = require('../knowledge-hub.cjs');
 
 const MAX_ROUNDS = 3;
 const NODE = /^\d{1,10}[:-]\d{1,10}$/;
@@ -60,12 +61,13 @@ function prompt(p, scripts) {
   ].join('\n');
 }
 
-function prepare(job, { dzHome, project, adb, deps }) {
+function prepare(job, { dzHome, project, adb, deps, searchPath }) {
   const p = readPayload(job.payload ?? {}, { dzHome, project });
   if (job.payload.holder !== undefined) (deps?.checkLock ?? checkLock)(dzHome, job.payload);
   const wrapper = writeAdbWrapper({ dzHome, serial: p.serial, adb });
   fs.mkdirSync(path.join(p.repo, '.harness-run', `uidiff-r${p.round}`, 'run'), { recursive: true });
   const skillScripts = path.join(dzHome, 'harness', 'skills', '{ui-diff,ui-diff-review,compare-ui-board}', 'scripts');
+  const kb = kbAccess(searchPath);
   return {
     prompt: prompt(p, skillScripts),
     resumePrompt: `Tiếp tục so UI vòng ${p.round}/${MAX_ROUNDS} từ chỗ đã dừng rồi trả JSON kết quả cuối.`,
@@ -73,13 +75,14 @@ function prepare(job, { dzHome, project, adb, deps }) {
     model: 'opus',
     tools: ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash'],
     allowedTools: [
-      'Read', 'Edit', 'Write', 'Glob', 'Grep', ...FIGMA_TOOLS,
+      'Read', 'Edit', 'Write', 'Glob', 'Grep', ...FIGMA_TOOLS, ...kb.allowed,
       'Bash',
     ],
-    disallowedTools: [...DENIED.map(command => `Bash(${command}:*)`), `Read(/${dzHome}/secrets/**)`],
+    disallowedTools: [...DENIED.map(command => `Bash(${command}:*)`), ...kb.denied, `Read(/${dzHome}/secrets/**)`],
     permissionMode: 'dontAsk',
     jsonSchema: UIDIFF_SCHEMA,
     mcpConfig: figmaReadConfig(dzHome),
+    extraMcp: kb.mcp,
     env: { ...isolatedEnv(dzHome, { config: NO_PUSH }), ...IDENTITY, ANDROID_SERIAL: p.serial, PATH: `${wrapper}${path.delimiter}${process.env.PATH}` },
   };
 }

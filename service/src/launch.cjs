@@ -41,7 +41,7 @@ function agentOptions(ctx, prepared, job, mcpConfig) {
 function workerOptions(ctx, job, project) {
   const handler = ctx.handlers[job.kind];
   if (!handler) throw new Error(`chưa có handler cho loại việc ${job.kind}`);
-  const prepared = handler.prepare(job, { dzHome: ctx.dzHome, project, deps: ctx.handlerDeps });
+  const prepared = handler.prepare(job, { dzHome: ctx.dzHome, project, deps: ctx.handlerDeps, searchPath: ctx.env.PATH });
   const { env, mcpConfig, sandbox } = contain(ctx, job, project, prepared, applyEnv(workerEnv(ctx.env, ctx.dzHome), prepared.env));
   return {
     ...(isCommandKind(job.kind) ? commandOptions(prepared, job) : agentOptions(ctx, prepared, job, mcpConfig)),

@@ -130,7 +130,8 @@ test('dry run: only local commands, no Discord, no Confluence write, no push', a
   for (const { args, env } of s.calls) {
     assert.ok(args.includes('Bash(git push:*)'));
     assert.ok(args.includes('AskUserQuestion'));
-    assert.equal(args.includes('--mcp-config'), false);
+    const mcp = args.indexOf('--mcp-config');
+    if (mcp >= 0) assert.deepEqual(Object.keys(JSON.parse(args[mcp + 1]).mcpServers), ['knowledge-hub']);
     assert.equal(env.HARNESS_HEADLESS, '1');
     assert.equal(env.GIT_SSH_COMMAND, '/usr/bin/false');
     assert.equal(Object.keys(env).some(name => /^DISCORD_|GH_TOKEN|JIRA_API/.test(name)), false);
