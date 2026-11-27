@@ -72,7 +72,7 @@ function createWeb(ctx, { facade, host, port, now = Date.now, resolveToken = def
     }
     if (req.method === 'POST') checkOrigin(req);
     const auth = authorize(req, res, route, token, query);
-    if (auth.login) return html(res, 200, messagePage('Đã mở khoá', 'Đang vào trang trạng thái…', { refresh: '/' }));
+    if (auth.login) return html(res, 200, messagePage('Đã mở khoá', 'Đang vào board…', { refresh: '/' }));
     const body = req.method === 'POST' ? await readJson(req, res) : null;
     const result = await route.run({ ctx, facade, specId: auth.specId, viewer: auth.viewer, operator: auth.operator === true, body, token, params, query, now: now() });
     return route.api ? json(res, 200, { ok: true, ...result }) : html(res, 200, result);

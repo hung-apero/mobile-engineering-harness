@@ -7,7 +7,10 @@ const COLUMNS = [['approved', 'Spec duyệt'], ['coded', 'Code xong'], ['trial',
 
 const safe = value => esc(redact(String(value ?? '')));
 const meta = parts => parts.filter(Boolean).join(' · ');
-const boardUrl = (token, key) => `/board/${esc(token)}${key ? `/${esc(key)}` : ''}`;
+const boardUrl = (base, key) => (key ? `${base}/${esc(key)}` : base || '/');
+const tokenBase = token => `/board/${esc(token)}`;
+const OPERATOR_ACTIONS = '<nav class="actions"><a class="button" href="/spec/new">Gửi spec mới</a> <a class="button" href="/app/new">App mới</a></nav>';
+const topOf = (title, operator) => `<header class="top"><h1>${title}</h1>${operator ? OPERATOR_ACTIONS : ''}</header>`;
 const bugCount = item => item.groups.reduce((sum, group) => sum + group.bugs.length, 0);
 
 function row(title, lines, badge = '') {
@@ -19,18 +22,20 @@ const stateTag = spec => tag(WAITING.has(spec.state) ? 'wait' : 'plain', spec.la
 
 const linkButtons = links => (links?.length ? `<p class="actions">${links.map(item => `<a class="button" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${safe(item.name)}</a>`).join(' ')}</p>` : '');
 
-const specRow = (token, key, operator) => spec => {
+const specRow = (base, key, operator) => spec => {
   const { stepLine, nowLine, issueLine } = spec.summary ?? {};
-  const link = `<a href="${boardUrl(token, key)}/spec/${esc(spec.id)}">Chi tiết →</a>`;
+  const link = `<a href="${boardUrl(base, key)}/spec/${esc(spec.id)}">Chi tiết →</a>`;
   return row(safe(spec.title), [stepLine && safe(stepLine), nowLine ? safe(nowLine) : spec.waitingFor && `chờ ${safe(spec.waitingFor)}`, issueLine && safe(issueLine), ...spec.products.map(safe), link, operator && linkButtons(spec.links)], stateTag(spec));
 };
 
 const bugRow = bug => row(`${safe(bug.key)} ${safe(bug.summary)}`, [meta([safe(bug.priority), bug.assignee && safe(bug.assignee)])], bug.loop ? tag('plain', 'bug loop') : '');
 
-function versionBlock(item) {
+const versionBlock = (key, operator) => item => {
   const groups = item.groups.map(group => `<h4>${safe(group.status)} <span class="count">${group.bugs.length}</span></h4>${rows(group.bugs.map(bugRow), '')}`).join('');
-  return `<h3>Bug bản ${safe(item.version)}</h3><p class="meta">${safe(item.sync)}</p>${groups || '<p class="empty">Chưa có bug nào.</p>'}`;
-}
+  const name = `Bug bản ${safe(item.version)}`;
+  const title = operator ? `<a href="/release/${esc(key)}/${esc(item.version)}">${name}</a>` : name;
+  return `<h3>${title}</h3><p class="meta">${safe(item.sync)}</p>${groups || '<p class="empty">Chưa có bug nào.</p>'}`;
+};
 
 const batchRow = batch => row(`Đợt #${safe(batch.id)} bản ${safe(batch.version)}`, [meta([safe(batch.phase), batch.keys.map(safe).join(', ')])], tag('plain', BATCHES[batch.state] ?? batch.state));
 
@@ -55,8 +60,8 @@ ${inner.body}
   return page({ title, style: 'home', body, reload: 60 });
 }
 
-function projectRow(token) {
-  return project => row(`<a href="${boardUrl(token, project.key)}">${safe(project.key)}</a>`, [
+function projectRow(base) {
+  return project => row(`<a href="${boardUrl(base, project.key)}">${safe(project.key)}</a>`, [
     project.specs.length ? `${project.specs.length} phase đang làm` : 'Không có phase nào đang làm',
     ...project.specs.map(spec => meta([safe(spec.title), safe(spec.label), spec.waitingFor && `chờ ${safe(spec.waitingFor)}`])),
     ...project.bugs.map(item => meta([`${bugCount(item)} bug bản ${safe(item.version)}`, safe(item.sync)])),
@@ -64,22 +69,22 @@ function projectRow(token) {
   ], project.specs.some(spec => spec.waitingFor) ? tag('wait', 'Đang chờ người') : '');
 }
 
-function boardListPage(model, token, now) {
+function boardListPage(model, base, now, operator = false) {
   return boardShell('Board', model, {
-    top: '<header class="top"><h1>Board</h1></header>',
-    body: `<section class="panel" aria-labelledby="projects"><h2 id="projects">Dự án</h2>${rows(model.projects.map(projectRow(token)), 'Không có dự án nào.')}</section>`,
+    top: topOf('Board', operator),
+    body: `<section class="panel" aria-labelledby="projects"><h2 id="projects">Dự án</h2>${rows(model.projects.map(projectRow(base)), 'Không có dự án nào.')}</section>`,
   }, now);
 }
 
-function boardProjectPage(model, token, now, operator = false) {
+function boardProjectPage(model, base, now, operator = false) {
   const { project } = model;
   return boardShell(`Board ${project.key}`, model, {
-    top: `<p class="meta"><a href="${boardUrl(token)}">← Mọi dự án</a></p><header class="top"><h1>${safe(project.key)}</h1></header>`,
-    body: `<section class="panel" aria-labelledby="phases"><h2 id="phases">Phase đang làm</h2>${rows(project.specs.map(specRow(token, project.key, operator)), 'Không có phase nào đang làm.')}</section>
-<section class="panel" aria-labelledby="bugs"><h2 id="bugs">Bug</h2>${project.bugs.map(versionBlock).join('') || '<p class="empty">Chưa theo dõi bản nào.</p>'}
+    top: `<p class="meta"><a href="${boardUrl(base)}">← Mọi dự án</a></p>${topOf(safe(project.key), operator)}`,
+    body: `<section class="panel" aria-labelledby="phases"><h2 id="phases">Phase đang làm</h2>${rows(project.specs.map(specRow(base, project.key, operator)), 'Không có phase nào đang làm.')}</section>
+<section class="panel" aria-labelledby="bugs"><h2 id="bugs">Bug</h2>${project.bugs.map(versionBlock(project.key, operator)).join('') || '<p class="empty">Chưa theo dõi bản nào.</p>'}
 <h3>Đợt sửa lỗi</h3>${rows(project.batches.map(batchRow), 'Không có đợt nào đang mở.')}</section>
 <section class="panel" aria-labelledby="activity"><h2 id="activity">7 ngày qua</h2>${activityTable(project.activity)}</section>`,
   }, now);
 }
 
-module.exports = { boardListPage, boardProjectPage };
+module.exports = { boardListPage, boardProjectPage, tokenBase };

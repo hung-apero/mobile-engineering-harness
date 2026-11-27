@@ -52,8 +52,11 @@ async function serve(t, s) {
   const { url } = await web.start();
   t.after(() => web.stop());
   const port = Number(new URL(url).port);
+  const get = (target, extra = {}) => send(port, { url: target, ...extra });
+  const key = () => fs.readFileSync(path.join(s.ctx.secretsDir, 'web-operator-token'), 'utf8').trim();
   return {
-    get: (target, extra = {}) => send(port, { url: target, ...extra }),
+    get,
+    login: async () => ({ cookie: (await get(`/?k=${key()}`)).headers['set-cookie'][0].split(';')[0] }),
     post: (target, extra = {}) => send(port, { method: 'POST', url: target, body: '{}', ...extra, headers: { origin: `http://127.0.0.1:${port}`, 'content-type': 'application/json' } }),
   };
 }
@@ -268,4 +271,34 @@ test('spec card shows steps, now line, issues and a detail link', async t => {
   assert.match(text, /Đang chờ PO: spec \d+/);
   assert.match(text, /⚠ 1 vấn đề chặn merge/);
   assert.match(text, new RegExp(`href="/board/${token}/ABC1/spec/${id}"`));
+});
+
+test('the operator home is the board: projects, phases and spec detail under / with operator buttons', async t => {
+  const s = world(t);
+  const id = s.spec('ABC1', 'Phase 15', 'uidiff');
+  s.track('ABC1', '1.9.2');
+  const web = await serve(t, s);
+  const headers = await web.login();
+  const home = await web.get('/', { headers });
+  assert.equal(home.status, 200);
+  for (const part of ['<h1>Board</h1>', 'href="/ABC1"', 'href="/XYZ2"', 'href="/spec/new"', 'href="/app/new"']) assert.ok(home.text.includes(part), part);
+  assert.doesNotMatch(home.text, /Đang làm gì|\/board\//);
+  const project = await web.get('/ABC1', { headers });
+  assert.equal(project.status, 200);
+  for (const part of ['href="/"', `href="/ABC1/spec/${id}"`, 'href="/release/ABC1/1.9.2"', 'href="/spec/new"']) assert.ok(project.text.includes(part), part);
+  const detail = await web.get(`/ABC1/spec/${id}`, { headers });
+  assert.equal(detail.status, 200);
+  assert.ok(detail.text.includes('href="/ABC1"'));
+  for (const url of ['/NOPE9', '/ABC1/spec/999', '/ABC1/job/999/log']) assert.equal((await web.get(url, { headers })).status, 404, url);
+});
+
+test('the operator board pages are closed without the operator cookie and a viewer token does not open them', async t => {
+  const s = world(t);
+  const id = s.spec('ABC1', 'Phase 15', 'uidiff');
+  const { token } = tokens.issueViewer(s.db, { keys: [] }, NOW);
+  const web = await serve(t, s);
+  for (const url of ['/', '/ABC1', `/ABC1/spec/${id}`, '/ABC1/job/1/log', `/?k=${token}`]) assert.equal((await web.get(url)).status, 403, url);
+  const viewer = await web.get(`/board/${token}/ABC1`);
+  assert.ok(viewer.text.includes(`href="/board/${token}/ABC1/spec/${id}"`));
+  assert.doesNotMatch(viewer.text, /href="\/spec\/new"|href="\/release\//);
 });

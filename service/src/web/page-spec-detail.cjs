@@ -82,22 +82,22 @@ function technical(detail, operator) {
   return `<section class="panel"><details><summary><h2>Kỹ thuật</h2></summary>${git ? `<p class="meta">${git}</p>` : ''}<h3>Plan</h3>${plans}<h3>Job · tổng ${safe(usd(detail.totalUsd))}</h3>${jobs}${raw}</details></section>`;
 }
 
-function logPanel(detail, token, key, operator) {
+function logPanel(detail, base, key, operator) {
   const job = detail.jobs.find(item => ['starting', 'running'].includes(item.state)) ?? detail.jobs[0];
   if (!job) return '';
-  const url = `/board/${esc(token)}/${esc(key)}/job/${esc(job.id)}/log`;
+  const url = `${base}/${esc(key)}/job/${esc(job.id)}/log`;
   const name = safe(SEGMENTS[job.segment] ?? job.segment ?? job.kind);
   return section('log', `Log job #${esc(job.id)} · ${name}`, `<div class="log" data-log="${url}" role="log" aria-live="polite"><p class="empty">Đang tải log…</p></div><p class="meta job-status" role="status"></p>${operator ? `<p class="actions">${buttons(job, operator, detail)}</p>` : ''}`);
 }
 
-function specDetailPage(detail, { token, key, operator, now }) {
-  const back = `/board/${esc(token)}/${esc(key)}`;
+function specDetailPage(detail, { base, key, operator, now }) {
+  const back = `${base}/${esc(key)}`;
   const body = `<main id="main" class="wide">
 <p class="meta"><a href="${back}">← ${esc(key)}</a></p>
 <header class="top"><h1>${safe(detail.title)}</h1>${tag('plain', detail.label)}</header>
 ${summary(detail, operator)}
 ${progress(detail)}
-${logPanel(detail, token, key, operator)}
+${logPanel(detail, base, key, operator)}
 ${problems(detail)}
 ${interface_(detail)}
 ${technical(detail, operator)}

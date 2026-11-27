@@ -4,7 +4,7 @@ const { list } = require('./quiz-model.cjs');
 function newSpecPage(overview) {
   const options = list(overview?.projects).map(item => `<option value="${esc(item.key)}">${esc(item.key)}</option>`).join('');
   const body = `<main id="main" class="narrow">
-<p class="crumb"><a href="/">← Trạng thái</a></p>
+<p class="crumb"><a href="/">← Board</a></p>
 <h1>Gửi spec mới</h1>
 <p class="lead">Hệ thống sẽ đọc spec, soạn câu hỏi cho PO rồi viết lại thành bản rõ ràng để duyệt.</p>
 <form id="spec" class="panel stack" novalidate>

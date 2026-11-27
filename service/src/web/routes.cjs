@@ -3,14 +3,13 @@ const review = require('./api-review.cjs');
 const spec = require('./api-spec.cjs');
 const releaseApi = require('./api-release.cjs');
 const newappApi = require('./api-newapp.cjs');
-const { homePage } = require('./page-home.cjs');
 const { newSpecPage } = require('./page-new-spec.cjs');
 const { quizPage } = require('./page-quiz.cjs');
 const { reviewPage } = require('./page-review.cjs');
 const { releasePage } = require('./page-release.cjs');
 const { newAppPage } = require('./page-newapp.cjs');
 const { loadRelease } = require('./release-load.cjs');
-const { boardListPage, boardProjectPage } = require('./page-board.cjs');
+const { boardListPage, boardProjectPage, tokenBase } = require('./page-board.cjs');
 const { boardModel, projectBoard } = require('../board/model.cjs');
 const { specDetail } = require('../board/spec-detail.cjs');
 const { specDetailPage } = require('./page-spec-detail.cjs');
@@ -29,8 +28,33 @@ const tokenCall = (kind, action, run, methods) => call(`${kind}-${action}`, kind
 const KEY = '([A-Z][A-Z0-9]{1,19})';
 const VERSION = '([0-9][0-9A-Za-z.-]{0,39})';
 
+const ALL = { keys: [] };
+const canSee = (viewer, key) => viewer.keys.length === 0 || viewer.keys.includes(key);
+
+function projectPage({ ctx, viewer, key, base, operator, now }) {
+  const found = projectBoard(ctx, viewer, key, now);
+  if (!found) throw new WebError(404, 'NOT_FOUND');
+  return boardProjectPage(found, base, now, operator);
+}
+
+function specPage({ ctx, viewer, key, id, base, operator, now }) {
+  const detail = canSee(viewer, key) ? specDetail(ctx, key, id, now) : null;
+  if (!detail) throw new WebError(404, 'NOT_FOUND');
+  return specDetailPage(detail, { base, key, operator, now });
+}
+
+function jobLog({ ctx, viewer, key, id, query }) {
+  const job = canSee(viewer, key) ? jobsStore.getJob(ctx.db, Number(id)) : null;
+  if (!job || job.project !== key) throw new WebError(404, 'NOT_FOUND');
+  const offset = query.has('offset') ? Number(query.get('offset')) : null;
+  return readJobLog(ctx, job, offset);
+}
+
 const ROUTES = [
-  view('home', 'operator', /^\/$/, async ({ facade, now }) => homePage(await facade.overview(now), now), { login: true }),
+  view('home', 'operator', /^\/$/, ({ ctx, now }) => boardListPage(boardModel(ctx, ALL, now), '', now, true), { login: true }),
+  view('home-project', 'operator', new RegExp(`^/${KEY}$`), ({ ctx, params, now }) => projectPage({ ctx, viewer: ALL, key: params[0], base: '', operator: true, now })),
+  view('home-spec', 'operator', new RegExp(`^/${KEY}/spec/(\\d{1,9})$`), ({ ctx, params, now }) => specPage({ ctx, viewer: ALL, key: params[0], id: params[1], base: '', operator: true, now })),
+  call('home-job-log', 'operator', new RegExp(`^/${KEY}/job/(\\d{1,9})/log$`), ({ ctx, params, query }) => jobLog({ ctx, viewer: ALL, key: params[0], id: params[1], query }), GET),
   view('new-spec', 'operator', /^\/spec\/new$/, async ({ facade, now }) => newSpecPage(await facade.overview(now))),
   call('new-spec-save', 'operator', /^\/api\/spec\/new$/, spec.create),
   view('release', 'operator', new RegExp(`^/release/${KEY}/${VERSION}$`), async ({ ctx, params, query, now }) => releasePage(await loadRelease(ctx, params, now, query.get('fresh') === '1'), now)),
@@ -47,25 +71,10 @@ const ROUTES = [
   view('review', 'review', /^\/review\/([\w-]{1,200})$/, async ({ facade, specId }) => reviewPage(await facade.review(specId))),
   tokenCall('review', 'approve', review.approve),
   tokenCall('review', 'feedback', review.feedback),
-  view('board', 'viewer', /^\/board\/([\w-]{1,200})$/, ({ ctx, viewer, token, now }) => boardListPage(boardModel(ctx, viewer, now), token, now)),
-  view('board-project', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}$`), ({ ctx, viewer, token, params, operator, now }) => {
-    const found = projectBoard(ctx, viewer, params[1], now);
-    if (!found) throw new WebError(404, 'NOT_FOUND');
-    return boardProjectPage(found, token, now, operator);
-  }),
-  view('board-spec', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}/spec/(\\d{1,9})$`), ({ ctx, viewer, token, params, operator, now }) => {
-    const key = params[1];
-    const detail = viewer.keys.length > 0 && !viewer.keys.includes(key) ? null : specDetail(ctx, key, params[2], now);
-    if (!detail) throw new WebError(404, 'NOT_FOUND');
-    return specDetailPage(detail, { token, key, operator, now });
-  }),
-  call('board-job-log', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}/job/(\\d{1,9})/log$`), ({ ctx, viewer, params, query }) => {
-    const key = params[1];
-    const job = viewer.keys.length > 0 && !viewer.keys.includes(key) ? null : jobsStore.getJob(ctx.db, Number(params[2]));
-    if (!job || job.project !== key) throw new WebError(404, 'NOT_FOUND');
-    const offset = query.has('offset') ? Number(query.get('offset')) : null;
-    return readJobLog(ctx, job, offset);
-  }, GET),
+  view('board', 'viewer', /^\/board\/([\w-]{1,200})$/, ({ ctx, viewer, token, operator, now }) => boardListPage(boardModel(ctx, viewer, now), tokenBase(token), now, operator)),
+  view('board-project', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}$`), ({ ctx, viewer, token, params, operator, now }) => projectPage({ ctx, viewer, key: params[1], base: tokenBase(token), operator, now })),
+  view('board-spec', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}/spec/(\\d{1,9})$`), ({ ctx, viewer, token, params, operator, now }) => specPage({ ctx, viewer, key: params[1], id: params[2], base: tokenBase(token), operator, now })),
+  call('board-job-log', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}/job/(\\d{1,9})/log$`), ({ ctx, viewer, params, query }) => jobLog({ ctx, viewer, key: params[1], id: params[2], query }), GET),
   call('job-control', 'operator', /^\/api\/job\/(\d{1,9})\/(start|pause|stop)$/, ({ ctx, params, now }) => controlJob(ctx, params[0], params[1], now)),
 ];
 

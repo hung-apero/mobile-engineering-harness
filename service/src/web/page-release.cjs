@@ -59,7 +59,7 @@ function releasePage(view, now) {
   ];
   const problem = view.problem ? `<p class="notice warn">Không kiểm được trực tiếp, đang hiện kết quả đã lưu: ${safe(view.problem)}</p>` : '';
   const body = `<main id="main" class="wide">
-<p class="crumb"><a href="/">← Trạng thái</a></p>
+<p class="crumb"><a href="/">← Board</a></p>
 <header class="top"><h1>${safe(found.project)} ${safe(found.version)}</h1><a class="button" href="?fresh=1">Kiểm lại ngay</a></header>
 <p class="lead">${found.state === 'closed' ? 'Bản đã kết thúc' : safe(READY[found.ready] ?? READY.none)}. Nhánh ${safe(found.branch)}.</p>
 ${problem}

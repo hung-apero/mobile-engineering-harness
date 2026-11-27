@@ -39,31 +39,9 @@ test('the key is traded for an HttpOnly SameSite=Strict cookie that is not the k
   assert.doesNotMatch(cookie + res.text, new RegExp(key));
   assert.match(res.text, /http-equiv="refresh" content="0;url=\/"/);
   const headers = await web.login();
-  assert.equal((await web.get('/', { headers })).status, 200);
+  assert.equal((await web.get('/spec/new', { headers })).status, 200);
   web.clock.now += 31 * 24 * 60 * 60 * 1000;
-  assert.equal((await web.get('/', { headers })).status, 403);
-});
-
-test('home shows jobs, bug batches, specs, waits and quota, escaped and redacted', async t => {
-  const overview = () => ({
-    service: 'đang chạy', intake: 'mở', quota: '42%',
-    projects: [{ key: 'AAP864', note: 'bật, chạy khô' }],
-    jobs: [{ id: 1, project: 'AAP864', kind: 'bug', key: 'APDF1-1', state: 'running', attempt: 2, reason: '<img src=x> sk-ant-secret' }],
-    batches: [{ project: 'AAP864', version: '1.2.0', kind: 'normal', state: 'running', keys: ['APDF1-1', 'APDF1-2'] }],
-    specs: [{ id: 7, project: 'AAP864', title: 'Phase 15', state: 'quiz', link: 'http://127.0.0.1:8787/quiz/abc' }],
-    waits: [{ project: 'AAP864', role: 'po', subject: 'Trả lời quiz', openedAt: web.clock.now - 7200000, link: 'javascript:alert(1)' }],
-  });
-  const web = await startWeb(t, { facade: createFake({ overview }) });
-  const { text } = await web.get('/', { headers: await web.login() });
-  for (const part of ['42%', 'APDF1-1', 'APDF1-2', 'Phase 15', 'Trả lời quiz', 'đang chạy', 'chạy khô', 'href="http://127.0.0.1:8787/quiz/abc"']) assert.ok(text.includes(part), part);
-  assert.doesNotMatch(text, /<img|sk-ant-secret|href="javascript/);
-});
-
-test('home survives an empty overview', async t => {
-  const web = await startWeb(t, { facade: createFake({ overview: () => ({}) }) });
-  const res = await web.get('/', { headers: await web.login() });
-  assert.equal(res.status, 200);
-  assert.match(res.text, /Chưa có việc nào/);
+  assert.equal((await web.get('/spec/new', { headers })).status, 403);
 });
 
 test('a new spec turns a link or page number into a url source and text into a pasted one', async t => {
@@ -99,7 +77,7 @@ test('the new spec page lists the projects', async t => {
 
 test('a facade failure on a page shows a plain error page', async t => {
   const web = await startWeb(t, { facade: createFake({ overview: () => { throw fail('BOOM'); } }) });
-  const res = await web.get('/', { headers: await web.login() });
+  const res = await web.get('/spec/new', { headers: await web.login() });
   assert.equal(res.status, 500);
   assert.match(res.headers['content-type'], /text\/html/);
   assert.doesNotMatch(res.text, /facade/);

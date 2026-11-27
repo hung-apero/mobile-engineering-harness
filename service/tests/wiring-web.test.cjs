@@ -127,10 +127,12 @@ test('the new-app page saves non-secret values, shows the checklist, checks it, 
   assert.equal((await s.post('/api/app/new', { ...body, key: 'bad key' }, { headers })).status, 400);
 });
 
-test('home links to the new-app page and to the release page of every followed version', async t => {
+test('home is the board with the new-app button and a link to each project', async t => {
   const s = await start(t);
-  const res = await s.get('/', { headers: await s.login() });
+  const headers = await s.login();
+  const res = await s.get('/', { headers });
   assert.equal(res.status, 200);
   assert.match(res.text, /href="\/app\/new"/);
-  assert.match(res.text, /href="\/release\/ABC1\/1\.0\.0"/);
+  assert.match(res.text, /href="\/ABC1"/);
+  assert.equal((await s.get('/ABC1', { headers })).status, 200);
 });

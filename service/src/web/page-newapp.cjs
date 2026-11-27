@@ -58,7 +58,7 @@ function newAppPage(ctx, key) {
   }
   const known = drafts(ctx.db).map(name => `<li><a href="/app/new?key=${esc(name)}">${esc(name)}</a></li>`).join('');
   const body = `<main id="main" class="narrow">
-<p class="crumb"><a href="/">← Trạng thái</a></p>
+<p class="crumb"><a href="/">← Board</a></p>
 <h1>App mới</h1>
 <p class="lead">Điền giá trị không bí mật, rồi bấm kiểm. Chỉ khi mọi mục bắt buộc đạt thì dev mới chạy <code>dz newapp create</code>.</p>
 ${known ? `<p class="meta">Đã có: </p><ul class="inline">${known}</ul>` : ''}
