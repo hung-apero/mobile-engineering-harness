@@ -6,6 +6,7 @@ const { checkRepo } = require('./wire.cjs');
 const { DIR } = require('./repo-files.cjs');
 
 const FORBIDDEN = [DIR, `${DIR}/**`, `**/${DIR}/**`];
+const ARTIFACTS = [`:(top,glob)${DIR}/**`, ':(top,glob).ui-diff-*/**'];
 const MAX_LINES = 20000;
 const INTEGRATION = /^dz\/spec-[1-9]\d{0,14}$/;
 
@@ -15,11 +16,10 @@ async function commitLeftovers({ repo, git = runGit }) {
   await checkRepo(repo);
   const branch = await out(git(['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: repo }));
   if (!INTEGRATION.test(branch)) throw new GitError(`bản clone không ở nhánh dz/spec-<id>: ${branch}`, 'INVALID');
-  const paths = ['--', '.', `:(exclude)${DIR}`];
-  if (await out(git(['status', '--porcelain', ...paths], { cwd: repo }))) {
-    await git(['add', '-A', ...paths], { cwd: repo });
-    await git(['commit', '-q', '--no-verify', '-m', 'chore: leftover changes', ...paths], { cwd: repo });
-  }
+  await git(['add', '-A', '--', '.'], { cwd: repo });
+  await git(['reset', '-q', '--', ...ARTIFACTS], { cwd: repo });
+  const staged = await git(['diff', '--cached', '--quiet'], { cwd: repo, okCodes: [0, 1] });
+  if (staged.code === 1) await git(['commit', '-q', '--no-verify', '-m', 'chore: leftover changes'], { cwd: repo });
   return check(SHA, await out(git(['rev-parse', 'HEAD'], { cwd: repo })), 'HEAD');
 }
 
@@ -47,7 +47,7 @@ async function strippedTree({ mirror, tmp, head, start, git }) {
   try {
     await git(['worktree', 'add', '--quiet', '--detach', '--no-checkout', '--', tree, head], { gitDir: mirror });
     await git(['read-tree', head], { cwd: tree });
-    await git(['rm', '-r', '-q', '--cached', '--ignore-unmatch', '--', `:(top,icase)${DIR}`], { cwd: tree });
+    await git(['rm', '-r', '-q', '--cached', '--ignore-unmatch', '--', `:(top,icase)${DIR}`, ':(top,glob).ui-diff-*/**'], { cwd: tree });
     const old = await out(git(['ls-tree', '-d', '--name-only', start, '--', DIR], { cwd: tree }));
     if (old) await git(['read-tree', `--prefix=${DIR}/`, `${start}:${DIR}`], { cwd: tree });
     return check(SHA, await out(git(['write-tree'], { cwd: tree })), 'tree');

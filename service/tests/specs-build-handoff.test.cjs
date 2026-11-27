@@ -137,3 +137,21 @@ test('a review question answered Other by the PO becomes a rework', async t => {
   await s.until(() => s.spec().state === 'building' && s.running('spec').length === 1, 'build lại');
   assert.match(fs.readFileSync(path.join(s.repo(), '.harness-run/inputs/rework-1.md'), 'utf8'), /FIX-OTHER bỏ hẳn nút/);
 });
+
+test('screenshots a worker leaves in the clone never break the review or reach the candidate', async t => {
+  const s = setupBuild(t);
+  await s.toBuilding();
+  await s.code();
+  const repo = s.repo();
+  fs.appendFileSync(path.join(repo, '.git', 'info', 'exclude'), '.harness-run/\n');
+  fs.mkdirSync(path.join(repo, '.ui-diff-r1', 'figma'), { recursive: true });
+  fs.writeFileSync(path.join(repo, '.ui-diff-r1', 'figma', 'a.png'), 'png');
+  fs.writeFileSync(path.join(repo, 'extra.txt'), 'extra\n');
+  g(repo, 'add', '.ui-diff-r1');
+  await s.smoke();
+  await s.review();
+  await s.until(() => s.spec().data.build.candidate, 'candidate');
+  const tree = s.tree(s.spec().data.build.candidate.sha);
+  assert.ok(tree.includes('extra.txt'), tree.join(','));
+  assert.equal(tree.some(name => name.startsWith('.ui-diff') || name.startsWith('.harness-run')), false);
+});
