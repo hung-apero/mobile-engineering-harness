@@ -12,6 +12,11 @@ const { newAppPage } = require('./page-newapp.cjs');
 const { loadRelease } = require('./release-load.cjs');
 const { boardListPage, boardProjectPage } = require('./page-board.cjs');
 const { boardModel, projectBoard } = require('../board/model.cjs');
+const { specDetail } = require('../board/spec-detail.cjs');
+const { specDetailPage } = require('./page-spec-detail.cjs');
+const { readJobLog } = require('../board/job-log.cjs');
+const jobsStore = require('../jobs.cjs');
+const { controlJob } = require('../board/job-control.cjs');
 const { WebError } = require('./web-error.cjs');
 
 const GET = ['GET', 'HEAD'];
@@ -48,6 +53,20 @@ const ROUTES = [
     if (!found) throw new WebError(404, 'NOT_FOUND');
     return boardProjectPage(found, token, now);
   }),
+  view('board-spec', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}/spec/(\\d{1,9})$`), ({ ctx, viewer, token, params, operator, now }) => {
+    const key = params[1];
+    const detail = viewer.keys.length > 0 && !viewer.keys.includes(key) ? null : specDetail(ctx, key, params[2], now);
+    if (!detail) throw new WebError(404, 'NOT_FOUND');
+    return specDetailPage(detail, { token, key, operator, now });
+  }),
+  call('board-job-log', 'viewer', new RegExp(`^/board/([\\w-]{1,200})/${KEY}/job/(\\d{1,9})/log$`), ({ ctx, viewer, params, query }) => {
+    const key = params[1];
+    const job = viewer.keys.length > 0 && !viewer.keys.includes(key) ? null : jobsStore.getJob(ctx.db, Number(params[2]));
+    if (!job || job.project !== key) throw new WebError(404, 'NOT_FOUND');
+    const offset = query.has('offset') ? Number(query.get('offset')) : null;
+    return readJobLog(ctx, job, offset);
+  }, GET),
+  call('job-control', 'operator', /^\/api\/job\/(\d{1,9})\/(start|pause|stop)$/, ({ ctx, params, now }) => controlJob(ctx, params[0], params[1], now)),
 ];
 
 function findRoute(pathname, search) {

@@ -17,7 +17,11 @@ function row(title, lines, badge = '') {
 const rows = (items, empty) => (items.length ? `<ul class="rows">${items.join('')}</ul>` : `<p class="empty">${empty}</p>`);
 const stateTag = spec => tag(WAITING.has(spec.state) ? 'wait' : 'plain', spec.label);
 
-const specRow = spec => row(safe(spec.title), [spec.waitingFor && `chờ ${safe(spec.waitingFor)}`, ...spec.products.map(safe)], stateTag(spec));
+const specRow = (token, key) => spec => {
+  const { stepLine, nowLine, issueLine } = spec.summary ?? {};
+  const link = `<a href="${boardUrl(token, key)}/spec/${esc(spec.id)}">Chi tiết →</a>`;
+  return row(safe(spec.title), [stepLine && safe(stepLine), nowLine ? safe(nowLine) : spec.waitingFor && `chờ ${safe(spec.waitingFor)}`, issueLine && safe(issueLine), ...spec.products.map(safe), link], stateTag(spec));
+};
 
 const bugRow = bug => row(`${safe(bug.key)} ${safe(bug.summary)}`, [meta([safe(bug.priority), bug.assignee && safe(bug.assignee)])], bug.loop ? tag('plain', 'bug loop') : '');
 
@@ -69,7 +73,7 @@ function boardProjectPage(model, token, now) {
   const { project } = model;
   return boardShell(`Board ${project.key}`, model, {
     top: `<p class="meta"><a href="${boardUrl(token)}">← Mọi dự án</a></p><header class="top"><h1>${safe(project.key)}</h1></header>`,
-    body: `<section class="panel" aria-labelledby="phases"><h2 id="phases">Phase đang làm</h2>${rows(project.specs.map(specRow), 'Không có phase nào đang làm.')}</section>
+    body: `<section class="panel" aria-labelledby="phases"><h2 id="phases">Phase đang làm</h2>${rows(project.specs.map(specRow(token, project.key)), 'Không có phase nào đang làm.')}</section>
 <section class="panel" aria-labelledby="bugs"><h2 id="bugs">Bug</h2>${project.bugs.map(versionBlock).join('') || '<p class="empty">Chưa theo dõi bản nào.</p>'}
 <h3>Đợt sửa lỗi</h3>${rows(project.batches.map(batchRow), 'Không có đợt nào đang mở.')}</section>
 <section class="panel" aria-labelledby="activity"><h2 id="activity">7 ngày qua</h2>${activityTable(project.activity)}</section>`,

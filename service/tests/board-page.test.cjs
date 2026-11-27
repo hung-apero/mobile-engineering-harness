@@ -255,3 +255,17 @@ test('a viewer token cannot open home, quiz, review or any api route, and a bad 
   assert.equal((await web.get(`/board/${bad(99)}`)).status, 429);
   assert.equal((await web.get(`/board/${token}`)).status, 200);
 });
+
+test('spec card shows steps, now line, issues and a detail link', async t => {
+  const s = world(t);
+  const repo = s.repo([{ status: 'done' }]);
+  fs.writeFileSync(path.join(repo, '.harness-run', 'result.json'), JSON.stringify({ issues: [{ title: 'Accuracy sai', status: 'open', blocksMerge: true, owner: 'sdk', detail: 'd' }] }));
+  const id = s.spec('ABC1', 'Phase 15', 'uidiff', { repo });
+  s.wait(id, 'ABC1', 'po');
+  const { token } = tokens.issueViewer(s.db, { keys: [] }, NOW);
+  const text = (await (await serve(t, s)).get(`/board/${token}/ABC1`)).text;
+  assert.match(text, /✓Code ✓Chạy thử ●So giao diện ○Kiểm code/);
+  assert.match(text, /Đang chờ PO: spec \d+/);
+  assert.match(text, /⚠ 1 vấn đề chặn merge/);
+  assert.match(text, new RegExp(`href="/board/${token}/ABC1/spec/${id}"`));
+});

@@ -10,6 +10,8 @@ ASK_ONLY = ("money", "ads", "premium", "reward", "delete-data", "drop-requiremen
 AUTO_OK = ("evidence", "easy-change")
 CATEGORIES = ASK_ONLY + ("unclear",) + AUTO_OK
 PLAN_STATUSES = ("pending", "coding", "done", "blocked")
+ISSUE_STATUSES = ("fixed", "open")
+ISSUE_OWNERS = ("po", "dev", "sdk")
 NO_QUESTIONS = "Không có câu hỏi"
 
 HEAD = re.compile(r"^## (Q\d+)\b")
@@ -176,6 +178,29 @@ def commit_exists(root, sha):
     return found.returncode == 0
 
 
+def issue_problems(data):
+    issues = data.get("issues")
+    findings = data.get("review", {}).get("findings") if isinstance(data.get("review"), dict) else None
+    if issues is None:
+        return ["result.json: có review.findings thì phải có issues[]"] if findings else []
+    if not isinstance(issues, list):
+        return ["result.json: issues phải là danh sách"]
+    problems = []
+    for n, item in enumerate(issues, 1):
+        item = item if isinstance(item, dict) else {}
+        if not filled(item.get("title")):
+            problems.append(f"result.json issues[{n}]: thiếu title")
+        if item.get("status") not in ISSUE_STATUSES:
+            problems.append(f"result.json issues[{n}]: status phải là {'|'.join(ISSUE_STATUSES)}")
+        if item.get("owner") not in ISSUE_OWNERS:
+            problems.append(f"result.json issues[{n}]: owner phải là {'|'.join(ISSUE_OWNERS)}")
+        if not isinstance(item.get("blocksMerge"), bool):
+            problems.append(f"result.json issues[{n}]: blocksMerge phải là true|false")
+        if not isinstance(item.get("detail"), str):
+            problems.append(f"result.json issues[{n}]: detail phải là chuỗi")
+    return problems
+
+
 def result_problems(root, run):
     path = run / "result.json"
     if not path.exists():
@@ -192,7 +217,7 @@ def result_problems(root, run):
         problems.append("result.json: plans phải là danh sách")
     if not isinstance(data.get("review"), dict) or not filled(data["review"].get("verdict")):
         problems.append("result.json: thiếu review.verdict")
-    return problems
+    return problems + issue_problems(data)
 
 
 def check(segment, root):

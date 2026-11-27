@@ -140,6 +140,29 @@ class HeadlessCheckTest(unittest.TestCase):
         self.run.write("clarified/spec-v2.md", "# Spec đã làm rõ\n\n## Tạm theo đề xuất, PO chưa chốt\n\n- Q2 → A\n")
         self.assertEqual(self.problems("clarify"), [])
 
+    def build_result(self, **extra):
+        subprocess.run(["git", "init", "-q", str(self.run.root)], check=True)
+        subprocess.run(["git", "-C", str(self.run.root), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x"], check=True)
+        head = subprocess.run(["git", "-C", str(self.run.root), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+        result = {"branch": "dz/spec-3", "commit": head, "plans": [], "tests": {}, "review": {"verdict": "APPROVE", "findings": []}}
+        result.update(extra)
+        self.run.write("result.json", result)
+
+    def test_build_issues_required_with_findings(self):
+        self.build_result(review={"verdict": "changes-applied", "findings": [{"severity": "high", "message": "x"}]})
+        self.assertTrue(any("issues" in p for p in self.problems("build")))
+        self.build_result()
+        self.assertEqual(self.problems("build"), [])
+
+    def test_build_issue_fields_checked(self):
+        good = {"title": "Điểm Accuracy chưa đúng", "status": "open", "blocksMerge": True, "owner": "sdk", "detail": "SpeakingResult chỉ có correct/total"}
+        self.build_result(issues=[{**good, "title": ""}, {**good, "status": "done"}, {**good, "owner": "qa"}, {**good, "blocksMerge": "yes"}, {**good, "detail": None}])
+        problems = self.problems("build")
+        for field in ("title", "status", "owner", "blocksMerge", "detail"):
+            self.assertTrue(any(field in p for p in problems), field)
+        self.build_result(issues=[good], review={"verdict": "changes-applied", "findings": [{"severity": "high", "message": "x"}]})
+        self.assertEqual(self.problems("build"), [])
+
     def test_build_result_commit_must_exist(self):
         subprocess.run(["git", "init", "-q", str(self.run.root)], check=True)
         subprocess.run(["git", "-C", str(self.run.root), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x"], check=True)

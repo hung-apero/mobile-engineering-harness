@@ -13,7 +13,7 @@ làm đúng **một đoạn** rồi thoát. File này ưu tiên hơn `single.md`
 | `scout.md`, `figma/` | bạn | bản đồ app, digest Figma |
 | `clarified/spec-v<N>.md` (N ≥ 2, mỗi lần làm rõ tăng 1), `brief/` | bạn | spec đã làm rõ, requirements / acceptance criteria / design |
 | `progress.json` | bạn | `{ "plans": [{ "id", "title", "status": "pending\|coding\|done\|blocked" }] }`, ghi lại mỗi khi một plan đổi |
-| `result.json` | bạn | `{ "branch", "commit", "plans": [...], "tests": {...}, "review": { "verdict", "findings": [...] } }` |
+| `result.json` | bạn | `{ "branch", "commit", "plans": [...], "tests": {...}, "review": { "verdict", "findings": [...] }, "issues": [...] }` — `issues`: mỗi vấn đề review / ghi chú còn lại một mục `{ "title", "status": "fixed"\|"open", "blocksMerge": true\|false, "owner": "po"\|"dev"\|"sdk", "detail" }`; `title` tiếng Việt có dấu, PO đọc được, không mã code; `detail` kỹ thuật; `blocksMerge` true khi chưa được merge. Có `findings` thì bắt buộc có `issues` |
 | `blocked.json` | bạn | `{ "segment", "reason", "missing": [...] }` khi cần người |
 
 Không ghi vào `inputs/` (service so băm, sửa là bị gác). Không ghi `briefs/`, `plans/handoff/`, `plans/reports/` ở gốc repo:

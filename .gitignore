@@ -15,4 +15,4 @@ Thumbs.db
 __pycache__/
 *.pyc
 .venv/
-service/node_modules/
+service/node_modules

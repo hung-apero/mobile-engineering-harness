@@ -18,7 +18,7 @@ function closeWait(db, key, now) {
 function syncParked(db, now, isInactive = () => false) {
   const open = new Set();
   for (const job of jobs.listJobs(db, { states: ['parked'] })) {
-    if (isInactive(job.project)) continue;
+    if (isInactive(job.project) || Object.values(jobs.HELD_REASONS).includes(job.parkReason)) continue;
     const key = PARKED + job.id;
     open.add(key);
     if (kv.get(db, key) !== null) continue;

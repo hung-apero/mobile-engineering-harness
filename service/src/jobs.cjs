@@ -143,12 +143,27 @@ function requeueForResume(db, id, now, { max, keepSession = true }) {
   });
 }
 
+const HELD_REASONS = { pause: 'tạm dừng từ board', stop: 'dừng từ board' };
+
+function hold(db, id, reason, now, { keepSession }) {
+  return transition(db, id, ['running'], 'parked', {
+    parkReason: reason, lastEventAt: now, slotsGranted: 0, resume: keepSession, ...(keepSession ? {} : { sessionId: null }),
+  });
+}
+
+function resumeHeld(db, id) {
+  return transition(db, id, ['parked'], 'queued', job => {
+    if (!job.sessionId) throw new Error(`việc ${id} không còn phiên để chạy tiếp`);
+    return { resume: true, slotsGranted: 0, pid: null, pidStart: null, finishedAt: null, result: null, parkReason: null };
+  });
+}
+
 function updateProgress(db, id, { logOffset, lastEventAt }) {
   db.prepare("UPDATE jobs SET log_offset = ?, last_event_at = ? WHERE id = ? AND state = 'running'").run(logOffset, lastEventAt, id);
   return getJob(db, id);
 }
 
 module.exports = {
-  enqueue, claimNext, markRunning, finish, park, retry, requeue, requeueForResume,
+  enqueue, claimNext, markRunning, finish, park, retry, requeue, requeueForResume, hold, resumeHeld, HELD_REASONS,
   getJob, listJobs, updateProgress,
 };

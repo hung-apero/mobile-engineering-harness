@@ -25,7 +25,7 @@ function coded(repo, { files = { 'feature.txt': 'feature\n' }, plans = ['01-path
   const head = branch ?? g(repo, 'symbolic-ref', '--short', 'HEAD');
   put(repo, {
     'progress.json': { plans: plans.map(id => ({ id, title: `Plan ${id}`, status: done.includes(id) ? 'done' : 'coding' })) },
-    'result.json': { branch: head, commit: forced ?? sha, plans: plans.map(id => ({ id, title: `Plan ${id}` })), tests: { unit: 'pass' }, review: { verdict, findings } },
+    'result.json': { branch: head, commit: forced ?? sha, plans: plans.map(id => ({ id, title: `Plan ${id}` })), tests: { unit: 'pass' }, review: { verdict, findings }, issues: findings.map(item => ({ title: String(item), status: 'open', blocksMerge: false, owner: 'dev', detail: String(item) })) },
   });
   return sha;
 }
