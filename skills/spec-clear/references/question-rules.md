@@ -47,6 +47,31 @@ viết theo ngôn ngữ của spec, lời thường, không có từ ngữ code 
 ```
 
 - Mỗi câu ≥2 lựa chọn và đúng một dòng **Đề xuất**.
+
+### Viết cho dễ hiểu
+
+Người đọc là PO (QA và dev đọc cùng). Họ chưa đọc code và không nhớ số mục trong spec. Đọc xong một câu phải chọn được
+ngay, không phải mở spec hay hỏi lại.
+
+- **Tiêu đề** là một câu hỏi, trả lời bằng cách chọn. Một câu, một quyết định; hai quyết định thì tách hai câu.
+- **Bối cảnh** kể tình huống người dùng gặp: "Khi người học đã xong bài hôm nay rồi mở lại Quick Quiz thì…". Nói spec
+  ghi gì và Figma / app đang thế nào bằng lời thường. Không dùng mã câu (Q18), số mục spec, tên biến, class, file, event
+  hay API trơn; cần nhắc thì ghi tên màn, tên nút, tên tính năng.
+- **Lựa chọn** là kết quả người dùng thấy, đủ cụ thể để QA kiểm được: "Vẫn cộng chuỗi ngày học", không phải "Giữ
+  như cũ", "Theo spec", "Tuỳ PO". Lựa chọn giữ cách app đang chạy thì ghi rõ app đang làm gì.
+- **Đề xuất** kèm một câu lý do theo lợi ích người dùng hoặc rủi ro (chi phí, trễ hạn, lỗi khó sửa), không viết "hợp lý hơn".
+- Câu chỉ dev trả lời được (version SDK, API, cấu hình build) thì vẫn viết lời thường, nói hậu quả PO sẽ thấy của
+  mỗi lựa chọn.
+- Mỗi dòng dưới 300 ký tự.
+
+Ví dụ:
+```
+## Q4 · Màn Tổng kết ngày hiện độ chính xác phần Nói thế nào? [chặn]
+Spec muốn ô "Độ chính xác" là điểm phát âm trung bình, nhưng bài Nói hiện chỉ cho biết người học nói đúng bao nhiêu câu.
+- A. Hiện tỉ lệ câu nói đúng (vd 8/10 câu = 80%)
+- B. Ẩn ô này cho tới khi có điểm phát âm
+- **Đề xuất: A** — người học vẫn thấy tiến bộ, làm được ngay; đổi sang điểm phát âm sau không ảnh hưởng màn khác
+```
 - `[chặn]` khi câu trả lời đổi thứ sẽ được làm (màn, luồng, dữ liệu, phạm vi). Câu `[chặn]` xếp trước.
 - Không có chỗ mơ hồ nào → ghi đúng một dòng `Không có câu hỏi`.
 
