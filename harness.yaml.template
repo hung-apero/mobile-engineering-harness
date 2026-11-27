@@ -62,6 +62,9 @@ quality_gates:
 workflows:
   feature-development: workflows/feature-development.md
 
+knowledge:
+  line: ""
+
 reporting:
   template: constitution/definition-of-done.md#report
   states:

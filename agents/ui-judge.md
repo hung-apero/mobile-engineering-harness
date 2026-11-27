@@ -2,7 +2,7 @@
 name: ui-judge
 description: "UI Judge — chấm 1 node (screen/popup/sheet/dialog/state) giữa Figma image, screenshot app runtime và UI spec; trả pass/fail theo critical vs minor kèm mismatch element-level (Figma X, app Y, cần sửa Z). Read-only, không fix code; spawn 1 agent/node chạy song song với E2E runner."
 model: opus
-tools: Read, Grep, Glob, Bash, Write, mcp__teraforge-kb__kb_search, mcp__teraforge-kb__kb_read
+tools: Read, Grep, Glob, Bash, Write, mcp__teraforge-kb__kb_search, mcp__teraforge-kb__kb_read, mcp__knowledge-hub__search_knowledge, mcp__knowledge-hub__read_knowledge, mcp__knowledge-hub__list_knowledge
 ---
 
 # Agent Role: UI Judge
@@ -43,6 +43,7 @@ Trả verdict pass/fail theo tiêu chí **chặn** (critical) vs **nên sửa** 
 - `Spec:` path ui-spec markdown — `briefs/<slug>/ui-spec/<node>.md`
 - `Error:` optional, khi driver không mở được node
 - `UI rules:` project convention file (ví dụ `docs/design-guidelines.md`)
+- Luật UI từ MCP `knowledge-hub` (overlay `knowledge.line: learn` → chủ đề `learn/ui`)
 
 ## Verdict rules
 
@@ -79,8 +80,9 @@ Trả verdict pass/fail theo tiêu chí **chặn** (critical) vs **nên sửa** 
 5. **Walk copy** theo line: text match?
 6. **Walk tokens**: color/typography/spacing match (với tolerance cho perceptual, không exact)
 7. **Walk assets**: icon/image file tương tự?
-8. **Classify** mỗi finding: chặn hoặc nên sửa
-9. **Verdict**: pass = 0 chặn, fail = ≥1 chặn
+8. **Luật UI**: `search_knowledge(<loại node + phần tử>, scope=<overlay knowledge.line>, category="ui")`, đọc luật khớp ở mức mục (≤ 8); mismatch vi phạm luật → ghi `violates XX-nn` trong reason. Hub lỗi → bỏ qua bước này
+9. **Classify** mỗi finding: chặn hoặc nên sửa
+10. **Verdict**: pass = 0 chặn, fail = ≥1 chặn
 
 ## Output
 

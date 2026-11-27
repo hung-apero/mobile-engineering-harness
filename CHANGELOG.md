@@ -6,6 +6,15 @@ Format tuân theo [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) và s
 
 ## [Unreleased]
 
+### Added — knowledge-hub (luật rút từ bug thật + doc Learn-SDK) cho agent Android
+
+- **MCP `knowledge-hub`** (repo `hung-apero/company-ai-knowledge-hub`, thay `mobile-kb`): `architect`, `reviewer`, `ui-judge`, `bug-reviewer` thêm `mcp__knowledge-hub__search_knowledge` / `read_knowledge` / `list_knowledge` vào `tools` (giữ `mcp__teraforge-kb__*`); `coder`, `bug-fixer` không khai `tools` nên dùng được sẵn. Quy trình chi tiết nằm ở hub (`agent-guidelines/android-dev-agent`), file agent chỉ trỏ tới và liệt kê bước.
+- **`architect`**: `read_knowledge("global/principles")` → `search_knowledge(<brief>, scope=<knowledge.line>)` → đọc luật khớp ở mức mục (≤ 8) + SDK page `learn/sdk/<feature>`; plan (cả plan từng feature ở parallel-features) có `## KB rules`: `code | vì sao áp | plan đáp ứng thế nào`, hoặc `none matched` + query đã thử, hoặc `KB: unavailable` khi hub lỗi.
+- **`coder`**: đọc từng mã trong `## KB rules`, chạy lệnh "Tự kiểm" của mã trước handoff, báo kết quả. **`reviewer` / `bug-reviewer`**: kiểm từng mã, finding ghi `violates XX-nn`. **`bug-fixer`**: `search_knowledge(<triệu chứng>)` trước khi tìm root cause, `fix-design.md` có `## KB rules`. **`ui-judge`**: luật UI (`category="ui"`) khi chấm.
+- **Overlay `knowledge.line`** (optional, `learn | photo | fitness`) trong `overlay.schema.yaml` + `harness.yaml.template`; `validate-overlay.py` kiểm enum khi có giá trị. Không khai → agent chỉ nạp `global` và cảnh báo, hành vi khác giữ nguyên.
+- `feature-full-flow` Stage 5 gate + `coding-orchestrator` (prompt Coder, prompt parallel feature) nhắc `## KB rules`.
+- `docs/knowledge-base-ops.md`: mục "knowledge-hub (bug-derived rules + SDK docs)" (cài, tool, slug, đề xuất thay đổi = PR vào hub); tên MCP server cũ `team-knowledge` → `teraforge-kb`.
+
 ### Added — Code graph (Graphify) cho scout / bug-fix
 
 - **`scripts/code-graph.sh`** (`ensure | path | prune <worktree>`): build graph Graphify code-only, offline (`GRAPHIFY_BACKEND=none`, tree-sitter AST, không gọi LLM) cho HEAD của worktree vào `<git-common-dir>/graphify/<commit>/graphify-out/graph.json`. Ngoài cây làm việc nên không commit nhầm; mọi worktree cùng commit dùng chung; seed AST cache từ bản trước (commit mới ~10s thay vì ~30s trên repo 4.5k file); khoá `mkdir` khi nhiều worker build cùng commit; worktree dirty → key riêng, build lại; giữ 3 bản mới nhất (~65MB/bản). Chưa cài graphify → exit 2, skill fallback grep.

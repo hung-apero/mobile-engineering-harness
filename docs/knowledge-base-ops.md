@@ -1,6 +1,8 @@
 # Knowledge Base Operations
 
-Hướng dẫn vận hành KB sau cutover 2026-10-29. Harness repo không còn `knowledge/` + `constitution/` + `briefs/` — toàn bộ KB sống trong [team-knowledge](https://github.com/huypqapero/team-knowledge) repo, access qua `team-knowledge-mcp` + `basic-memory` MCP server.
+Hướng dẫn vận hành KB sau cutover 2026-10-29. Harness repo không còn `knowledge/` + `constitution/` + `briefs/` — toàn bộ KB sống trong [team-knowledge](https://github.com/huypqapero/team-knowledge) repo, access qua MCP `teraforge-kb` (tool `mcp__teraforge-kb__kb_*`) + `basic-memory`.
+
+Luật rút từ bug thật + doc Learn-SDK sống ở KB thứ hai, company-ai-knowledge-hub, đọc qua MCP `knowledge-hub` (xem [§knowledge-hub](#knowledge-hub-bug-derived-rules--sdk-docs)).
 
 ## Overview
 
@@ -25,10 +27,50 @@ Hướng dẫn vận hành KB sau cutover 2026-10-29. Harness repo không còn `
 
 | Server | Role | Tool |
 |---|---|---|
-| `team-knowledge` | Write + sync + VN keyword search | `kb_push`, `kb_update`, `kb_search`, `kb_read`, `kb_status` |
+| `teraforge-kb` | Write + sync + VN keyword search | `kb_push`, `kb_update`, `kb_search`, `kb_read`, `kb_status` |
 | `basic-memory` | Semantic search + graph/context | `search_notes`, `read_note`, `write_note`, `edit_note`, ... |
 
 Wire config đã sẵn trong `~/.claude.json` (2 server merge sẵn Oct 29).
+
+## knowledge-hub (bug-derived rules + SDK docs)
+
+Repo private `hung-apero/company-ai-knowledge-hub` (thay `hung-apero/mobile-kb`). Chứa nguyên lý P1–P8 (`global`), luật theo dòng app có bug thật đứng sau (`AD-09`, `EC-07`…) và bản chép feature catalog Learn-SDK. Agent chỉ đọc qua MCP `knowledge-hub`; quy trình agent Android (thứ tự nạp, luật thắng doc, `## KB rules`, tối đa 8 luật, `KB: unavailable`) ở `read_knowledge("agent-guidelines/android-dev-agent")` — file agent harness chỉ trỏ tới đó.
+
+### Cài
+
+```bash
+git clone https://github.com/hung-apero/company-ai-knowledge-hub.git
+cd company-ai-knowledge-hub
+./install.sh          # cần uv + git; cài server + clone ~/.knowledge-hub/repo + đăng ký MCP user scope
+```
+
+Khởi động lại Claude Code, `/mcp` phải thấy `knowledge-hub`. Kiểm nhanh: `kh search "rewarded ad mở khoá bài" --scope learn`, `kh read learn/ads/ad-09`.
+
+### Tool
+
+| Tool | Dùng khi |
+|---|---|
+| `search_knowledge(query, scope?, kind?, category?, limit=10, scope_only=false)` | Tìm theo brief / triệu chứng; `scope` = `learn` / `photo` / `fitness`, `global` luôn được tìm cùng |
+| `read_knowledge(slug)` | Đọc đúng phần cần (luật → chỉ mục của luật) |
+| `list_knowledge(scope?, kind?)` | Xem cây scope → kind → category |
+
+Agent dùng: `architect` (ghi `## KB rules` vào plan), `coder` (đọc mã + chạy "Tự kiểm"), `reviewer` / `bug-reviewer` (`violates XX-nn`), `bug-fixer` (tra triệu chứng trước root cause), `ui-judge` (luật UI). Dòng app lấy từ overlay `knowledge.line`; không khai → chỉ `global` + cảnh báo.
+
+### Slug
+
+| Loại | Slug |
+|---|---|
+| Nguyên lý | `global/principles`, `global/principles/p2` |
+| Chủ đề (cả `rules.md`, gồm mục "Tự kiểm") | `learn/ads` |
+| Luật | `learn/ads/ad-09` |
+| SDK page | `learn/sdk/<feature>` |
+| Quy trình agent | `agent-guidelines/android-dev-agent` |
+
+Dẫn luật bằng mã (`AD-09`, `P2`); slug chỉ để tra.
+
+### Đề xuất thay đổi
+
+Thêm / sửa luật = PR vào repo hub (người review merge mới thành luật); không sửa clone `~/.knowledge-hub/repo`. Điều kiện `type: rule` và format xem README + `agent-guidelines/README.md` của hub. Doc Learn-SDK là bản chép: sửa ở Learn-SDK rồi sync.
 
 ## Install per machine (dev onboarding)
 
@@ -55,7 +97,7 @@ team-kb init \
 
 # 5. Wire MCP (Claude Code)
 team-kb client-config --client claude
-# → Ghép output vào ~/.claude.json .mcpServers (không overwrite entry khác)
+# → Ghép output vào ~/.claude.json .mcpServers với tên server `teraforge-kb` (không overwrite entry khác)
 
 # 6. Sync + verify
 team-kb update
