@@ -169,6 +169,7 @@ Pipeline đầy đủ cho feature mới (scope ≥ 1 screen hoặc impact busine
 - [ ] File list cụ thể
 - [ ] Decision có rationale
 - [ ] Risk + verification plan
+- [ ] `## KB rules` (mã luật từ `knowledge-hub`, `none matched` hoặc `KB: unavailable`)
 
 **Handoff**: Trả về Tech Lead review
 

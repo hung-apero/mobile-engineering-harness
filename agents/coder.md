@@ -44,6 +44,7 @@ Hiện thực code đúng thiết kế đã duyệt — viết code tối thiể
 
 - Confirm file list, decisions, scope boundary
 - Nếu có open question → stop, raise với Architect/user
+- `## KB rules`: đọc từng mã qua `read_knowledge` của MCP `knowledge-hub` (vd `read_knowledge("learn/ads/ad-09")`); làm theo `agent-guidelines/android-dev-agent` của hub
 
 ### Step 2 — Execute bottom-up
 
@@ -73,6 +74,7 @@ Copy pattern từ blueprint; **không copy pixel-exact**:
 - Compile: `./gradlew :<module>:build`
 - 1-2 unit tests happy path trên ViewModel
 - Preview Compose nếu UI
+- Mỗi mã trong `## KB rules`: chạy lệnh của mã đó ở mục "Tự kiểm" của chủ đề (`read_knowledge("learn/<chủ-đề>")`), xử lý từng dòng ra
 
 ### Step 5 — Handoff to Reviewer / QA
 
@@ -80,6 +82,7 @@ Report:
 - File list changed (match plan hay deviate?)
 - Decisions deviated (rationale)
 - Smoke test result
+- KB rules: mỗi mã PASS / lý do (kết quả "Tự kiểm")
 - Known gaps (edge case chưa cover, test deep chưa viết)
 
 ## Required policies

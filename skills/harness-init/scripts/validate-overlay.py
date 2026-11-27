@@ -43,6 +43,8 @@ ENUM_VALUES = {
     "stack.serialization": {"kotlinx-serialization", "moshi", "gson"},
 }
 
+KNOWLEDGE_LINES = {"learn", "photo", "fitness"}
+
 
 def load_yaml(path: Path) -> dict:
     with path.open() as f:
@@ -87,6 +89,10 @@ def validate(overlay: dict) -> list[str]:
     for mk in ("app", "presenter", "domain", "data"):
         if not modules.get(mk):
             errors.append(f"modules.{mk} is empty")
+
+    line = (overlay.get("knowledge") or {}).get("line")
+    if line and line not in KNOWLEDGE_LINES:
+        errors.append(f"knowledge.line={line!r} not in {sorted(KNOWLEDGE_LINES)}")
 
     return errors
 
