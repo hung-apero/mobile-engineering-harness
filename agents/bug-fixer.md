@@ -35,7 +35,8 @@ Theo thứ tự, đọc phần liên quan tới vùng bug (không đọc lướt
 1. `CLAUDE.md` của repo app + `docs/code-standards.md`, `docs/system-architecture.md` (nếu có) + overlay `.harness-overlay/` (constitution/product-extensions nếu có).
 2. `skills/coding-review/SKILL.md` §Step 2 checklist A–J (Architecture, SOLID, MVI, Compose, Coroutines, Error handling…) — đây là chuẩn reviewer sẽ chấm.
 3. `skills/coding-diagnose/SKILL.md` §"Fix tại cause hay tại symptom?" + §"Common mistakes (bug mode)".
-4. Đụng layer/pattern chưa rõ (UseCase hay không, Repository mới hay mở rộng, nav route) → `kb_search` (skill `tfkb`) theo ADR liên quan; xem 1 feature mẫu cùng repo làm đúng pattern rồi theo nó.
+4. Luật rút từ bug thật (MCP `knowledge-hub`, theo `agent-guidelines/android-dev-agent` của hub): `read_knowledge("global/principles")`, rồi **trước khi tìm root cause** `search_knowledge(<triệu chứng>, scope=<overlay knowledge.line>)`; luật có `symptoms` khớp → đọc luật đó (mức mục, ≤ 8). Hub lỗi → ghi `KB: unavailable` vào `fix-design.md`, làm tiếp.
+5. Đụng layer/pattern chưa rõ (UseCase hay không, Repository mới hay mở rộng, nav route) → `kb_search` (skill `tfkb`) theo ADR liên quan; xem 1 feature mẫu cùng repo làm đúng pattern rồi theo nó.
 
 ### 2. Ghi chú thiết kế fix (trước khi code, mỗi group)
 
@@ -45,6 +46,7 @@ Ghi `fix-design.md` vào evidence của bug (và tóm tắt trong PR):
 - **Hai phương án đã cân nhắc**: phương án sửa gốc vs phương án vá tại chỗ hiện bug; lý do chọn.
 - **Ảnh hưởng**: caller khác của code bị sửa (grep usage), state/contract thay đổi, test cần cập nhật.
 - **Pattern đi theo**: feature mẫu / blueprint đã đối chiếu.
+- **`## KB rules`**: `code | vì sao áp | fix đáp ứng thế nào` cho luật đã đọc ở bước 1.4 (hoặc `none matched` + query đã thử, hoặc `KB: unavailable`).
 
 "Phạm vi nhỏ" nghĩa là chỉ làm những gì root cause cần — **nhưng ở đúng layer**. Được refactor nhỏ trong vùng bug khi đó là cách fix gốc (chuyển logic từ Composable vào VM/UseCase, gộp flag rời thành state đúng, tách mapper), ghi lý do trong `fix-design.md`. Refactor ngoài vùng bug → không làm, ghi vào "Concerns" làm việc sau.
 
@@ -73,6 +75,7 @@ Fix đúng cần đổi domain contract, migration DB, sửa file ngoài phạm 
 
 ### 5. Tự kiểm trước khi bàn giao
 
+- Lệnh "Tự kiểm" của từng mã trong `## KB rules` (mục "Tự kiểm" của chủ đề) không còn dòng vi phạm.
 - Konsist + detekt (nếu repo cấu hình) + unit test module bị đụng PASS; test mới kiểm hành vi (state/effect), không kiểm chi tiết cài đặt.
 - Đi qua checklist A–J của `coding-review` cho diff của mình, ghi kết quả (PASS / N/A / lý do) vào `self-review.md` trong evidence.
 - Bàn giao để `bug-reviewer` review độc lập; PR giữ draft tới khi reviewer APPROVE.
@@ -90,6 +93,7 @@ Fix đúng cần đổi domain contract, migration DB, sửa file ngoài phạm 
 | Unit test ViewModel/UseCase | `testing-android` |
 | Checklist rule A–J (tự kiểm) | `coding-review` |
 | Rule/ADR của team | `tfkb` (kb_search) |
+| Luật rút từ bug thật + doc Learn-SDK | MCP `knowledge-hub` (`search_knowledge`, `read_knowledge`) |
 
 ## Hard rules
 

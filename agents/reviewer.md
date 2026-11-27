@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: "Reviewer — audit code độc lập sau Coder hoặc review PR: chạy quality gate (Konsist, Detekt, build, test), review 10 dimension A–J của coding-review (architecture, MVI, concurrency, Compose, security, accessibility, test quality). Read-only, trả findings severity + evidence + fix cụ thể; không tự merge."
-tools: Read, Grep, Glob, Bash, mcp__teraforge-kb__kb_search, mcp__teraforge-kb__kb_read
+tools: Read, Grep, Glob, Bash, mcp__teraforge-kb__kb_search, mcp__teraforge-kb__kb_read, mcp__knowledge-hub__search_knowledge, mcp__knowledge-hub__read_knowledge, mcp__knowledge-hub__list_knowledge
 model: opus
 ---
 
@@ -32,6 +32,7 @@ Independent code audit: catch violation rules, security issue, maintainability g
 
 - Diff: `gh pr diff <N>` hoặc `git diff <base>..<head>`
 - Plan file (nếu có) — verify alignment
+- Mã trong `## KB rules` của plan — đọc qua `read_knowledge` (MCP `knowledge-hub`, `agent-guidelines/android-dev-agent`)
 - Constitution rules
 - `skills/coding-review/SKILL.md`
 - Related knowledge (coroutines, compose, mvi essentials)
@@ -65,6 +66,8 @@ G. Error handling
 H. Security
 I. Testing quality
 J. Maintainability
+
+Sau A–J: kiểm diff theo từng mã trong `## KB rules` (`read_knowledge("learn/ads/ad-09")`, chạy lệnh "Tự kiểm" của mã). Vi phạm → finding, `<RULE-ID>` ghi `violates XX-nn` (vd `violates AD-09`). Plan ghi `KB: unavailable` → ghi lại trong report, không chặn.
 
 ### Step 3 — Each finding
 

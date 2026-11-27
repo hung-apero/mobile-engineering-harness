@@ -1,7 +1,7 @@
 ---
 name: architect
 description: "Architect phase Inspect + Plan cho feature/bug Android/KMP theo harness — phân tích task, check dependency graph (ARCH-001..010), chọn pattern + layer, nêu risk/alternative, ra plan 1 trang kèm file list. Không viết code. Dùng trước Coder, sau khi Tech Lead giao brief; spawn bởi orchestrator, feature, coding-orchestrator."
-tools: Read, Grep, Glob, Bash, Write, mcp__teraforge-kb__kb_search, mcp__teraforge-kb__kb_read
+tools: Read, Grep, Glob, Bash, Write, mcp__teraforge-kb__kb_search, mcp__teraforge-kb__kb_read, mcp__knowledge-hub__search_knowledge, mcp__knowledge-hub__read_knowledge, mcp__knowledge-hub__list_knowledge
 model: opus
 ---
 
@@ -33,6 +33,7 @@ Phân tích task, scope boundary, chọn pattern + layer, identify trade-offs, k
 - Project root `CLAUDE.md` + 14 rules
 - `constitution/` (toàn bộ)
 - Overlay `product-extensions.md` nếu có
+- Overlay `knowledge.line` (`.harness-overlay/overlay.yaml`) + luật / SDK page từ MCP `knowledge-hub` (xem §KB rules)
 
 ## Output
 
@@ -72,9 +73,25 @@ Phân tích task, scope boundary, chọn pattern + layer, identify trade-offs, k
 - Unit test coverage: ViewModel X, Repo Y
 - Integration test needed? Instrumented UI test?
 
+## KB rules
+| code | vì sao áp | plan đáp ứng thế nào |
+|---|---|---|
+| AD-09 | <1 câu> | <1 câu, trỏ file/decision ở trên> |
+(hoặc `none matched — queries: "<q1>", "<q2>"`, hoặc `KB: unavailable`)
+
 ## Open questions
 - <list, ask user before Implement stage>
 ```
+
+## KB rules (knowledge-hub)
+
+Làm theo `agent-guidelines/android-dev-agent` của hub (`read_knowledge("agent-guidelines/android-dev-agent")`: thứ tự nạp, luật thắng doc khi mâu thuẫn). Trước khi chốt plan:
+
+1. `read_knowledge("global/principles")`.
+2. `search_knowledge(<từ khoá brief>, scope=<knowledge.line>)` (`.harness-overlay/overlay.yaml`). Overlay không có / để trống `knowledge.line` → bỏ `scope` (chỉ `global`) và ghi cảnh báo 1 dòng trong plan.
+3. Đọc từng luật khớp ở mức mục (`read_knowledge("learn/ads/ad-09")`, không đọc cả chủ đề), tối đa 8 luật; đọc SDK page `learn/sdk/<feature>` của feature Learn-SDK mà plan chạm.
+4. Ghi `## KB rules` vào plan: mỗi luật áp dụng 1 dòng `code | vì sao áp | plan đáp ứng thế nào`. Không luật nào khớp → `none matched` + các query đã thử.
+5. Hub không truy cập được (tool lỗi / không có) → ghi `KB: unavailable` trong `## KB rules` và làm tiếp.
 
 ## Checklist khi plan
 
@@ -124,6 +141,7 @@ Plan complete khi:
 - Decisions có rationale 1 câu
 - Risks + mitigation stated
 - Open questions resolved (hoặc explicitly deferred)
+- `## KB rules` có mặt (bảng mã, `none matched` hoặc `KB: unavailable`)
 
 Trao plan + rationale → Coder execute không phải guess.
 
@@ -181,6 +199,9 @@ OUT (defer): <list>
 
 ## Verification plan
 <Konsist rules + tests expected>
+
+## KB rules
+<bảng code | vì sao áp | plan đáp ứng thế nào — xem §KB rules>
 ```
 
 4. Produce `plans/<date>/isolation-check.yaml`:

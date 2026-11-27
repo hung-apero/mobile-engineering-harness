@@ -53,7 +53,7 @@ Phase A — Architect subagent:
   → plans/<date>/plan.md
   
 Phase B — Coder subagent:
-  Spawn Task(subagent_type: "coder", prompt: "Read plan.md + implement")
+  Spawn Task(subagent_type: "coder", prompt: "Read plan.md (gồm ## KB rules) + implement")
   → code changes + handoff/coder.md
   
 Phase C — QA subagent:
@@ -154,6 +154,7 @@ SCOPE BOUNDARY (strict):
 FOLLOW:
 - coding-feature skill (upstream/skills/coding-feature/SKILL.md)
 - parallel-feature-development workflow Step 3
+- `## KB rules` trong PLAN: đọc từng mã (`read_knowledge`, MCP knowledge-hub), chạy lệnh "Tự kiểm" của mã trước handoff
 
 DELIVERABLES:
 1. Code in owned packages (test + implementation)
