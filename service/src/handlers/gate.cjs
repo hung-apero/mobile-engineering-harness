@@ -2,9 +2,13 @@ const { specDir, writeSpec, minutes } = require('../bugs/prompts-step-spec.cjs')
 const { isolatedEnv } = require('../bugs/prompts-env.cjs');
 const { bad, checkWorkDir } = require('../bugs/prompts-data.cjs');
 const { stepsOf, failure, missingStep, mentioned, stepLog } = require('../bugs/result-steps.cjs');
+const { redact } = require('../redact.cjs');
 
 const STEPS = [['compile', 45], ['unitTest', 60], ['lint', 30]];
 const REQUIRED = ['compile', 'unitTest'];
+const MAX_LINES = 10;
+const REASON_MAX = 1500;
+const WORKTREE = /\/\S*?\/batches\/[^/\s]+\/[^/\s]+\//g;
 
 const gateDir = (payload, options) => specDir('gate', payload, options);
 
@@ -21,8 +25,10 @@ function judgeLint(step, steps, changedFiles, dir) {
   const log = stepLog(dir, steps, 'lint');
   if (log === null) return failure(step, 'không có log đầy đủ để đối chiếu');
   const token = mentioned(log, changedFiles);
-  if (token) return failure(step, `báo lỗi ở file trong diff: ${token}`);
-  return { ok: true, note: 'lint đỏ nhưng không nhắc tới file nào trong diff' };
+  if (!token) return { ok: true, note: 'lint đỏ nhưng không nhắc tới file nào trong diff' };
+  const lines = log.split('\n').filter(line => mentioned(line, changedFiles)).map(line => line.trim().replace(WORKTREE, ''));
+  if (!lines.length) return failure(step, `báo lỗi ở file trong diff: ${token}`);
+  return { ok: false, failedStep: step.name, reason: redact(`lint: báo lỗi ở file trong diff:\n${[...new Set(lines)].slice(0, MAX_LINES).join('\n')}`).slice(0, REASON_MAX) };
 }
 
 function judgeGate(result, changedFiles, { dir } = {}) {

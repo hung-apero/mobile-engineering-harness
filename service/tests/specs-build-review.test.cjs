@@ -105,3 +105,20 @@ test('needsPo takes structured questions with a role and still reads plain strin
   assert.deepEqual(parsed.needsPo.map(q => [q.role, q.question, q.recommend, q.same]), [['qa', 'Test trên máy nào?', 'A', 'T2,T5'], ['po', 'Nút ở đâu?', 'A', '']]);
   assert.equal(parseFeatureReview({ ...base, needsPo: [{ ...ask, role: 'pm' }] }).ok, false);
 });
+
+test('a red gate after the reviewer used every fix round still gets its own fix round', async t => {
+  const s = setupBuild(t);
+  await s.toBuilding();
+  for (const n of [1, 2]) {
+    await s.code({ files: { 'feature.txt': `v${n}\n` } });
+    await s.smoke();
+    await s.review({ ...REVIEW_OK, verdict: 'changes', findings: [{ file: 'feature.txt', line: 1, severity: 'major', text: `sửa ${n}` }] });
+    await s.state('building');
+  }
+  await s.code({ files: { 'feature.txt': 'v3\n' } });
+  await s.smoke();
+  await s.review();
+  await s.gate(false);
+  await s.state('building');
+  assert.deepEqual([s.spec().data.build.fixes, s.spec().data.build.checkFixes], [2, 1]);
+});

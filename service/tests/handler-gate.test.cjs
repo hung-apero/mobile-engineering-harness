@@ -156,3 +156,11 @@ test('a real run of the prepared spec is judged from its stream, result file and
     }
   }
 });
+
+test('a lint failure names the rule, the file and the line of every finding in the diff, without the gradle tail', t => {
+  const w = world(t);
+  const out = withLog(w, `> Task :app:detekt\nCyclomaticComplexMethod - 16/15 - [handleIntent] at /Users/x/.dev-zone-v2/workspaces/AAP864/batches/spec-3/gate/${CHANGED[0]}:34:18 - Signature=x\nLongMethod - 68/50 - [Other] at /Users/x/other/Other.kt:1:1\nBUILD FAILED in 7s\n`);
+  assert.equal(out.ok, false);
+  assert.match(out.reason, new RegExp(`CyclomaticComplexMethod - 16/15 - \\[handleIntent\\] at ${CHANGED[0].replaceAll('.', '\\.')}:34:18`));
+  assert.doesNotMatch(out.reason, /BUILD FAILED|LongMethod|\/Users\//);
+});

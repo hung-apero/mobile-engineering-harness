@@ -42,7 +42,7 @@ async function gated(run) {
   if (!gate) return null;
   if (gate.broken) return broken(run, 'cổng không chạy được', gate);
   if (gate.ok) return gate;
-  fixRound(run, `Cổng đỏ: ${gate.reason}`);
+  fixRound(run, `Cổng đỏ: ${gate.reason}`, 'check');
   return { stop: true };
 }
 
@@ -52,7 +52,7 @@ async function built(run) {
   if (build.broken) return broken(run, 'build không chạy được', build);
   if (build.ok) return build;
   decide(run, 'Q02', 'spec-build-red', { reason: build.reason });
-  fixRound(run, `Build đỏ: ${build.reason}`);
+  fixRound(run, `Build đỏ: ${build.reason}`, 'check');
   return { stop: true };
 }
 

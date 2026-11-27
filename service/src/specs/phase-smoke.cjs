@@ -39,7 +39,7 @@ async function settle(run, job) {
   if (judged.broken) return park(run, `chạy thử không chạy được: ${judged.reason}`);
   if (judged.ok) return passed(run, job);
   decide(run, 'F05', 'spec-smoke-red', { step: judged.failedStep, reason: judged.reason.slice(0, 300) });
-  return fixRound(run, `Chạy thử đỏ: ${judged.reason}`);
+  return fixRound(run, `Chạy thử đỏ: ${judged.reason}`, 'check');
 }
 
 async function smoking(run) {

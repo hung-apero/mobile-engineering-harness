@@ -147,7 +147,7 @@ function retry(ctx, [id, , figma], now) {
   const target = link ? 'reading' : held.from;
   const name = NAMES[target];
   const keepJob = !link && job?.state === 'parked';
-  const data = { needs: null, parked: null, readAt: 0, readFailures: 0, ...(link && { figma: link }), ...(name && !keepJob && fresh(spec, name)), ...(spec.data.build && { build: { ...spec.data.build, fixes: 0, deviceAt: 0, launches: 0, landingTries: 0 } }) };
+  const data = { needs: null, parked: null, readAt: 0, readFailures: 0, ...(link && { figma: link }), ...(name && !keepJob && fresh(spec, name)), ...(spec.data.build && { build: { ...spec.data.build, fixes: 0, checkFixes: 0, deviceAt: 0, launches: 0, landingTries: 0 } }) };
   if (!store.transitionSpec(ctx.db, spec.id, [spec.state], target, now, { data })) throw new ExpectedError(`spec #${id} vừa chuyển trạng thái, chạy lại lệnh`);
   if (keepJob) retryJob(ctx, job, now);
   for (const prefix of ['needs', 'parked']) closeWaits(ctx.db, spec.id, now, prefix);

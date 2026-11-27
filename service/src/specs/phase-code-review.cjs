@@ -16,13 +16,14 @@ const HARD = ['forbidden', 'permission', 'secret'];
 const describe = problems => problems.map(p => `${p.code}${p.file ? ` ${p.file}` : ''}: ${p.detail}`).join('; ');
 const versionBranchOf = run => bugs.getVersion(run.db, run.project.key, buildOf(run).version)?.branch ?? `dz/release-${buildOf(run).version}`;
 
-function fixRound(run, text) {
-  const { fixes } = buildOf(run);
+function fixRound(run, text, kind = 'review') {
+  const field = kind === 'review' ? 'fixes' : 'checkFixes';
+  const fixes = buildOf(run)[field] ?? 0;
   const max = run.ctx.rulesFor(run.project.key).rules.F01.fix_rounds;
-  decide(run, 'F01', 'spec-fix', { round: fixes + 1, text: clip(text, 500) });
-  if (fixes >= max) return park(run, `sửa ${fixes} vòng vẫn chưa đạt: ${clip(text, 300)}`);
+  decide(run, 'F01', 'spec-fix', { kind, round: fixes + 1, text: clip(text, 500) });
+  if (fixes >= max) return park(run, `sửa ${fixes} vòng vẫn chưa đạt: ${clip(text, 600)}`);
   sendBack(run, text, `fix-${run.spec.data.serial}`);
-  saveBuild(run, { fixes: fixes + 1 });
+  saveBuild(run, { [field]: fixes + 1 });
   return toBuilding(run);
 }
 
@@ -87,7 +88,7 @@ async function start(run) {
     return true;
   }
   if (problems.length) {
-    fixRound(run, describe(problems));
+    fixRound(run, describe(problems), 'check');
     return true;
   }
   return launch(run, candidate);

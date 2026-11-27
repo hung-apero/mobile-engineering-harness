@@ -33,7 +33,7 @@ test('a red smoke sends the build back with the failing step', async t => {
   await s.until(() => s.running('spec').length === 1, 'build lại');
   const text = fs.readFileSync(path.join(s.repo(), '.harness-run/inputs/rework-1.md'), 'utf8');
   assert.match(text, /Chạy thử đỏ: smoke/);
-  assert.equal(s.spec().data.build.fixes, 1);
+  assert.equal(s.spec().data.build.checkFixes, 1);
   await s.code({ files: { 'feature.txt': 'fixed\n' } });
   await s.smoke(true, { assemble: false });
   assert.equal(s.spec().state, 'building');
