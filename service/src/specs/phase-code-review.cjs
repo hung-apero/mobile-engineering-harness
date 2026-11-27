@@ -5,7 +5,7 @@ const bugs = require('../bugs/store.cjs');
 const files = require('./repo-files.cjs');
 const { makeCandidate, FORBIDDEN, MAX_LINES } = require('./candidate.cjs');
 const { readReview } = require('./feature-review.cjs');
-const { addQuestions, holdsInstall, toBuilding, openItems, roleOf } = require('./provisional.cjs');
+const { addQuestions, holdsInstall, toBuilding, openItems, pendingItems, roleOf } = require('./provisional.cjs');
 const { pendingChange, askChange, noteSelfChange } = require('./change.cjs');
 const { fresh, keyOf, jobOf, again, stateOf } = require('./segment.cjs');
 const { move, decide, park, nameOf } = require('./kit.cjs');
@@ -63,7 +63,10 @@ function writeSpecFile(run) {
 
 async function launch(run, candidate) {
   const { tree } = await landingGit(run).landing.versionWorktree(gitArgs(run, { batchId: batchIdOf(run.spec), name: 'review', sha: candidate.sha, localFiles: false }));
-  const asked = openItems(run.spec).map(item => ({ qid: item.qid, role: roleOf(item), title: item.title }));
+  const asked = [
+    ...openItems(run.spec).map(item => ({ qid: item.qid, role: roleOf(item), title: item.title })),
+    ...pendingItems(run.spec).map(item => ({ qid: item.qid, role: roleOf(item), title: item.title, missingNow: true })),
+  ];
   const payload = { specId: run.spec.id, type: 'review', repo: tree, specFile: writeSpecFile(run), startSha: candidate.start, sha: candidate.sha, title: nameOf(run.spec), asked };
   jobs.enqueue(run.db, { project: run.project.key, kind: 'spec', key: keyOf(run.spec), priority: 1, slots: 1, payload }, run.now);
   return false;

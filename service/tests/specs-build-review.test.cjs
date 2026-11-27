@@ -98,12 +98,17 @@ test('the review worker only reads', async t => {
   assert.match(args.at(-1), /Chỉ đọc/);
 });
 
-test('needsPo takes structured questions with a role and still reads plain strings', () => {
+test('needsPo takes structured questions and refuses one that does not say what the app does now', () => {
   const base = { verdict: 'approve', specMatch: true, forbidden: [], findings: [] };
   const ask = { role: 'qa', question: 'Test trên máy nào?', context: '', now: 'Pixel 6', options: ['Máy Android 10'], recommend: 'C', why: '', same: 'T2,T5' };
-  const parsed = parseFeatureReview({ ...base, needsPo: [ask, 'Nút ở đâu?'] });
-  assert.deepEqual(parsed.needsPo.map(q => [q.role, q.question, q.recommend, q.same]), [['qa', 'Test trên máy nào?', 'A', 'T2,T5'], ['po', 'Nút ở đâu?', 'A', '']]);
+  const parsed = parseFeatureReview({ ...base, needsPo: [ask] });
+  assert.deepEqual(parsed.needsPo.map(q => [q.role, q.question, q.now, q.recommend, q.same]), [['qa', 'Test trên máy nào?', 'Pixel 6', 'A', 'T2,T5']]);
   assert.equal(parseFeatureReview({ ...base, needsPo: [{ ...ask, role: 'pm' }] }).ok, false);
+  for (const vague of ['Nút ở đâu?', { ...ask, now: '' }, { ...ask, now: '  ' }]) {
+    const refused = parseFeatureReview({ ...base, needsPo: [vague] });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /now/);
+  }
 });
 
 test('a red gate after the reviewer used every fix round still gets its own fix round', async t => {

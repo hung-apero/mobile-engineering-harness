@@ -16,6 +16,7 @@ const commands = require('../src/spec-commands.cjs');
 const CHECKER = path.join(__dirname, '..', '..', 'skills', 'feature', 'scripts', 'headless_check.py');
 const VERSION = '1.9.2';
 const SERIAL = 'emu-1';
+const askOf = q => (typeof q === 'string' ? { role: 'po', question: q, context: '', now: 'Nút ở góc trên', options: ['Nút ở góc dưới'], recommend: 'A', why: '', same: '' } : q);
 const REVIEW_OK = { verdict: 'approve', specMatch: true, needsPo: [], forbidden: [], findings: [] };
 const step = (name, ok = true) => ({ name, ok, exitCode: ok ? 0 : 1, signal: null, timedOut: false, attempts: 1, ms: 1, tail: ok ? '' : 'đỏ' });
 const stepsEvent = list => ({ ...OK, ...(list.every(x => x.ok) ? {} : { subtype: 'error_during_execution', is_error: true }), result: JSON.stringify({ steps: list }) });
@@ -150,7 +151,7 @@ function flow(s) {
       await until(() => running('spec').length === 1, 'việc build');
     },
     code: options => finish(dir => coded(dir, options)),
-    review: (result = REVIEW_OK) => finish(null, { event: { ...OK, result: '', structured_output: result } }),
+    review: (result = REVIEW_OK) => finish(null, { event: { ...OK, result: '', structured_output: { ...result, needsPo: (result.needsPo ?? []).map(askOf) } } }),
     gate: (ok = true) => finish(null, { kind: 'gate', event: stepsEvent([step('compile'), step('unitTest', ok)]) }),
     build: (ok = true) => finish((dir, job) => ok && apk(job), { kind: 'build', event: job => stepsEvent([step('verify'), step('assemble', ok), ...(ok && job.payload.distribute ? [step('distribute')] : [])]) }),
     smoke: (ok = true, { assemble = true } = {}) => finish((dir, job) => assemble && apk(job), { kind: 'build', event: () => stepsEvent([step('verify'), step('assemble', assemble), ...(assemble ? [step('smoke', ok)] : [])]) }),

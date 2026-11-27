@@ -35,7 +35,7 @@ test('a reviewer question is chosen provisionally, the code goes on and the PO i
   assert.match(s.waits().find(w => w.role === 'po').link, /\/quiz\//);
   const view = s.facade.review(s.id);
   assert.equal(view.trial.open, 1);
-  assert.match(view.trial.notes[0], /Câu tạm chọn chưa xác nhận: Nút đóng ở đâu\? → Giữ như đang làm/);
+  assert.match(view.trial.notes[0], /Câu tạm chọn chưa xác nhận: Nút đóng ở đâu\? → Giữ như code đang làm: Nút ở góc trên/);
   const refused = await s.approveTrial(view.sha);
   assert.deepEqual([refused.ok, /câu tạm chọn/.test(refused.error), s.spec().state], [false, true, 'po-trial']);
   assert.deepEqual(s.facade.submit(s.id, 'po', s.now), { ok: false, missing: ['T1'] });
@@ -180,4 +180,23 @@ test('a reviewer question naming several open ones rewrites the first and merges
   assert.deepEqual([items.T2.status, items.T2.title, items.T2.options.length], ['open', 'Accuracy Speaking tính thế nào?', 3]);
   assert.deepEqual([items.T1.status, items.T1.into], ['merged', 'T2']);
   assert.deepEqual(s.facade.quiz(s.id).ask.map(q => q.id), ['T2']);
+});
+
+test('a question that does not say what the code does waits for the reviewer and is never shown bare', async t => {
+  const s = setupBuild(t);
+  await s.toBuilding();
+  const legacy = { key: 'review/old', qid: 'T1', role: 'po', title: 'Popup hiện mấy lần?', options: [{ label: 'A', text: 'Giữ như đang làm', value: 'A' }], value: 'A', picked: 'A', status: 'open', apply: false, hard: false };
+  const data = { ...s.spec().data, prov: { items: { [legacy.key]: legacy }, next: 2, round: null, settled: null } };
+  s.ctx.db.prepare('UPDATE specs SET data = ? WHERE id = ?').run(JSON.stringify(data), s.id);
+  await s.code();
+  await s.smoke();
+  assert.equal(s.waits().filter(w => /câu phần/.test(w.subject)).length, 0);
+  assert.ok(!(s.facade.quiz(s.id).ask ?? []).some(q => q.id === 'T1'));
+  await s.until(() => s.running('spec').length === 1, 'review');
+  const [job] = s.running('spec');
+  assert.deepEqual(job.payload.asked, [{ qid: 'T1', role: 'po', title: 'Popup hiện mấy lần?', missingNow: true }]);
+  await s.review({ ...REVIEW_OK, needsPo: [{ role: 'po', question: 'Popup giới thiệu hiện mấy lần?', context: 'Chưa có lộ trình', now: 'Hiện lại mỗi lần vào tab Learning', options: ['Chỉ hiện một lần'], recommend: 'B', why: 'Đỡ phiền', same: 'T1' }] });
+  await toTrial(s);
+  const quiz = s.facade.quiz(s.id);
+  assert.deepEqual(quiz.ask.map(q => [q.id, q.options.map(o => o.text)]), [['T1', ['Giữ như code đang làm: Hiện lại mỗi lần vào tab Learning', 'Chỉ hiện một lần']]]);
 });

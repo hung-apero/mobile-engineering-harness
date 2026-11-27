@@ -10,13 +10,16 @@ const MAX_TEXT = 600;
 const ROLES = ['po', 'dev', 'qa'];
 const ROLE_NAMES = { po: 'PO', dev: 'Dev', qa: 'QA' };
 const LABELS = ['A', 'B', 'C'];
-const UPDATABLE = ['role', 'title', 'body', 'options', 'recommend', 'why', 'hard'];
+const UPDATABLE = ['role', 'title', 'body', 'now', 'options', 'recommend', 'why', 'hard'];
+const NOW_PREFIX = 'Giữ như code đang làm: ';
 const HARD = /(?:xo[áàa]|xóa|delete|wipe|erase)[^.\n]{0,40}(?:dữ liệu|data|tài khoản|account|tiến độ|progress)|thanh toán|giao dịch|trừ tiền|payment|billing|purchase/iu;
 
 const provOf = spec => spec.data.prov ?? { items: {}, next: 1, round: null, settled: null };
 const itemsOf = spec => Object.values(provOf(spec).items);
 const roleOf = item => (ROLES.includes(item.role) ? item.role : 'po');
-const openItems = spec => itemsOf(spec).filter(item => item.status === 'open');
+const saysNow = item => Boolean(item.now) || String(item.options?.[0]?.text ?? '').startsWith(NOW_PREFIX);
+const openItems = spec => itemsOf(spec).filter(item => item.status === 'open' && saysNow(item));
+const pendingItems = spec => itemsOf(spec).filter(item => item.status === 'open' && !saysNow(item));
 const holdsInstall = spec => openItems(spec).some(item => item.hard);
 const sentIds = (prov, role) => new Set(prov.sent?.[role]?.ids ?? []);
 const unsentOf = (spec, role) => openItems(spec).filter(item => roleOf(item) === role && !sentIds(provOf(spec), role).has(item.qid));
@@ -72,10 +75,10 @@ const askOf = value => (typeof value === 'string' ? { role: 'po', question: valu
 
 function itemOf(value, kind) {
   const ask = askOf(value);
-  const options = [ask.now ? `Giữ như code đang làm: ${ask.now}` : kind.option, ...(ask.options ?? []).slice(0, 2)].map((option, i) => ({ label: LABELS[i], text: text(option), value: LABELS[i] }));
+  const options = [ask.now ? `${NOW_PREFIX}${ask.now}` : kind.option, ...(ask.options ?? []).slice(0, 2)].map((option, i) => ({ label: LABELS[i], text: text(option), value: LABELS[i] }));
   const recommend = options.some(option => option.label === ask.recommend) ? ask.recommend : 'A';
   return {
-    key: keyOf(kind.prefix, ask.question), role: ROLES.includes(ask.role) ? ask.role : 'po', title: text(ask.question), body: text(ask.context),
+    key: keyOf(kind.prefix, ask.question), role: ROLES.includes(ask.role) ? ask.role : 'po', title: text(ask.question), body: text(ask.context), now: text(ask.now),
     options, value: 'A', recommend, why: text(ask.why), hard: HARD.test(ask.question), same: ask.same ?? '',
   };
 }
@@ -142,6 +145,6 @@ function applyAnswers(run) {
 }
 
 module.exports = {
-  addQuestions, assumeBlock, openRound, settleRound, applyAnswers, toBuilding, provOf, openItems, holdsInstall,
+  addQuestions, assumeBlock, openRound, settleRound, applyAnswers, toBuilding, provOf, openItems, pendingItems, holdsInstall,
   roleOf, rolesOpen, unsentOf, sentIds, countsOf, ROLES, ROLE_NAMES,
 };
