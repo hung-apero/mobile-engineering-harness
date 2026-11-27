@@ -40,14 +40,32 @@ function openRound(run) {
   return openOnce(run, `prov-${round}`, 'po', `Xác nhận câu tạm chọn khi code spec ${nameOf(run.spec)}`, () => linkFor(run.ctx, run.spec.id, 'quiz', run.now));
 }
 
-function addQuestions(run, questions) {
+const REVIEW = { prefix: 'review', option: 'Giữ như đang làm', why: 'Người kiểm code thấy điểm cần PO chốt' };
+const BLOCK = { prefix: 'block', option: 'Làm theo cách tạm agent đã chọn', why: 'Lượt code gặp điểm cần PO chốt, agent tạm chọn để làm tiếp' };
+const ACCESS = /token|quyền|quyen|đăng nhập|dang nhap|preflight|\b40[13]\b|mạng|vpn|google-services|keystore|credential|secret|permission/iu;
+const DECISION = /\bPO\b|chốt|chot|quyết định|quyet dinh|hoặc|hoac|\bor\b/iu;
+
+const keyOf = (prefix, question) => `${prefix}/${crypto.createHash('sha256').update(question).digest('hex').slice(0, 12)}`;
+
+function addQuestions(run, questions, kind = REVIEW) {
   const found = questions.map(question => {
-    const key = `review/${crypto.createHash('sha256').update(question).digest('hex').slice(0, 12)}`;
-    const options = [{ label: 'A', text: 'Giữ như đang làm', value: 'A' }];
-    return { key, title: text(question), options, value: 'A', why: 'Người kiểm code thấy điểm cần PO chốt', hard: HARD.test(question) };
+    const options = [{ label: 'A', text: kind.option, value: 'A' }];
+    return { key: keyOf(kind.prefix, question), title: text(question), options, value: 'A', why: kind.why, hard: HARD.test(question) };
   });
   patch(run, { prov: merge(provOf(run.spec), found) });
   if (holdsInstall(run.spec)) openRound(run);
+}
+
+function assumeBlock(run, { reason, missing = [] }) {
+  const question = [reason, ...missing].join(' — ');
+  if (ACCESS.test(question) || !DECISION.test(question) || HARD.test(question)) return false;
+  if (provOf(run.spec).items[keyOf(BLOCK.prefix, question)]) return false;
+  addQuestions(run, [question], BLOCK);
+  decide(run, 'S03', 'spec-assumed', { reason: text(question) });
+  const ways = missing.length ? ` (các hướng: ${missing.join('; ')})` : '';
+  sendBack(run, `Lượt code trước dừng vì: ${reason}${ways}. Không dừng ở điểm này: chọn hướng làm được ngay với code và SDK hiện có, ghi giả định vào build-notes và result.json; PO sẽ xác nhận khi thử bản cài.`, `assume-${run.spec.data.serial}`);
+  toBuilding(run);
+  return true;
 }
 
 function settleRound(run) {
@@ -89,4 +107,4 @@ function applyAnswers(run) {
   return true;
 }
 
-module.exports = { addQuestions, openRound, settleRound, applyAnswers, toBuilding, provOf, openItems, holdsInstall };
+module.exports = { addQuestions, assumeBlock, openRound, settleRound, applyAnswers, toBuilding, provOf, openItems, holdsInstall };

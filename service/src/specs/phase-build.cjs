@@ -2,7 +2,7 @@ const segment = require('./segment.cjs');
 const files = require('./repo-files.cjs');
 const { blockedOf, line } = require('./verify.cjs');
 const { copyLocalFiles } = require('./local-files.cjs');
-const { settleRound } = require('./provisional.cjs');
+const { settleRound, assumeBlock } = require('./provisional.cjs');
 const { noteSelfChange } = require('./change.cjs');
 const { move, decide, park, needInput, closeWaits } = require('./kit.cjs');
 const { buildOf, saveBuild } = require('./build-kit.cjs');
@@ -74,7 +74,7 @@ async function settle(run, error) {
   noteSelfChange(run);
   const found = await lookBuild(run);
   if (found.type === 'tampered') return park(run, found.reason);
-  if (found.type === 'blocked') return needInput(run, found);
+  if (found.type === 'blocked') return (found.kind !== 'harness' && assumeBlock(run, found)) || needInput(run, found);
   if (found.type === 'short') return restart(run, found.reason, error);
   return toSmoke(run, found.result);
 }

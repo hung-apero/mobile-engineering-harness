@@ -73,6 +73,43 @@ test('blocked.json during build asks the dev or the PO', async t => {
   assert.ok(s.waits().some(wait => wait.role === 'dev' && /thiếu quyền đọc repo SDK/.test(wait.subject)));
 });
 
+const DECISION = { segment: 'build', reason: 'SpeakingResult của SDK chỉ có correct/total nên cần SDK thêm API hoặc PO chốt dùng tỉ lệ câu đạt', missing: ['API điểm phát âm trong SDK', 'hoặc PO chốt Accuracy = tỉ lệ câu đạt'] };
+
+test('a build stop that needs a PO decision is assumed, coded on and asked later', async t => {
+  const s = setupBuild(t);
+  await s.toBuilding();
+  await s.finish(repo => put(repo, { 'blocked.json': DECISION }));
+  await s.until(() => s.spec().state === 'building' && s.running('spec').length === 1, 'build lại');
+  assert.equal(s.waits().length, 0);
+  assert.equal(s.decisions('spec-assumed').length, 1);
+  const item = Object.values(s.spec().data.prov.items)[0];
+  assert.equal(item.status, 'open');
+  assert.match(item.title, /tỉ lệ câu đạt/);
+  const rework = fs.readFileSync(path.join(s.repo(), '.harness-run/inputs/rework-1.md'), 'utf8');
+  assert.match(rework, /không dừng/i);
+  assert.match(rework, /SpeakingResult/);
+});
+
+test('the same stop again after an assumption calls the dev with the step and what to run', async t => {
+  const s = setupBuild(t);
+  await s.toBuilding();
+  await s.finish(repo => put(repo, { 'blocked.json': DECISION }));
+  await s.until(() => s.spec().state === 'building' && s.running('spec').length === 1, 'build lại');
+  await s.finish(repo => put(repo, { 'blocked.json': DECISION }));
+  assert.equal(s.spec().state, 'needs-input');
+  const [wait] = s.waits().filter(w => w.role === 'dev');
+  assert.match(wait.subject, /dừng ở bước code/);
+  assert.match(wait.subject, new RegExp(`dz spec retry ${s.id}`));
+});
+
+test('a build stop about money or user data is never assumed', async t => {
+  const s = setupBuild(t);
+  await s.toBuilding();
+  await s.finish(repo => put(repo, { 'blocked.json': { segment: 'build', reason: 'cần PO chốt gói thanh toán tuần hay tháng' } }));
+  assert.equal(s.spec().state, 'needs-input');
+  assert.equal(s.decisions('spec-assumed').length, 0);
+});
+
 test('done plans in progress.json reset the rerun budget', async t => {
   const s = setupBuild(t);
   await s.toBuilding();

@@ -83,13 +83,21 @@ function park(run, reason, extra = {}) {
   if (!extra.jobId) openOnce(run, 'parked', 'dev', `Spec ${nameOf(run.spec)} đang gác: ${reason}`);
 }
 
+const STEPS = { new: 'nhận spec', reading: 'đọc spec', asking: 'soạn câu hỏi', clarifying: 'viết lại spec', building: 'code', smoking: 'chạy thử', uidiff: 'so giao diện', reviewing: 'review code', candidate: 'dựng bản cài', landing: 'gộp vào bản' };
+
 function needInput(run, { kind, role, reason, missing = [] }) {
   const from = run.spec.state;
   move(run, 'needs-input', { data: { needs: { kind, role, reason, missing, from } } });
   decide(run, 'S02', 'spec-needs-input', { kind, reason });
   const text = `${reason}${missing.length ? ` (${missing.join('; ')})` : ''}`;
-  openOnce(run, 'needs', role, `Spec ${nameOf(run.spec)} cần bổ sung: ${text}`);
-  if (role === 'po') openOnce(run, 'needs-dev', 'dev', `Spec ${nameOf(run.spec)} chờ PO bổ sung, có rồi thì chạy dz spec retry ${run.spec.id}: ${text}`);
+  const where = `Spec ${nameOf(run.spec)} dừng ở bước ${STEPS[from] ?? from}`;
+  const retry = `dz spec retry ${run.spec.id}`;
+  if (role === 'po') {
+    openOnce(run, 'needs', 'po', `${where}, cần PO bổ sung: ${text}. Sửa trang spec rồi báo dev.`);
+    openOnce(run, 'needs-dev', 'dev', `${where}, chờ PO bổ sung: ${text}. PO bổ sung xong thì chạy ${retry}.`);
+  } else {
+    openOnce(run, 'needs', role, `${where}, cần dev xử lý: ${text}. Xử lý xong thì chạy ${retry}.`);
+  }
 }
 
 module.exports = {
